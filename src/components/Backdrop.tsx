@@ -1,0 +1,34 @@
+import { AnimatePresence, motion } from "framer-motion";
+import { NightHero } from "./ui/hero";
+import { MonoSky } from "./ui/mono-sky";
+import { AtlasSky, FolioSky, LunarSky, PaperSky } from "./ui/skies";
+import type { ThemeId } from "@/lib/themes";
+
+export type Phase = "intro" | "select" | "read";
+
+/** Fixed background: the theme's own sky behind every page, crossfading when the theme changes. */
+export function Backdrop({ theme, still }: { theme: ThemeId; still?: boolean }) {
+  return (
+    <div className="fixed inset-0 overflow-hidden" aria-hidden>
+      <AnimatePresence initial={false}>
+        <motion.div key={theme} className="absolute inset-0" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 1.2 }}>
+          {theme === "mono" ? (
+            <MonoSky className="absolute inset-0" still={still} />
+          ) : theme === "atlas" ? (
+            <AtlasSky className="absolute inset-0" still={still} />
+          ) : theme === "folio" ? (
+            <FolioSky className="absolute inset-0" still={still} />
+          ) : theme === "lunar" ? (
+            <LunarSky className="absolute inset-0" still={still} />
+          ) : theme === "paper" ? (
+            <PaperSky className="absolute inset-0" still={still} />
+          ) : (
+            <NightHero className="absolute inset-0" still={still} />
+          )}
+        </motion.div>
+      </AnimatePresence>
+      {/* keep the edges quiet so the frame reads first */}
+      <div className="absolute inset-0" style={{ background: "radial-gradient(130% 100% at 50% 50%, transparent 55%, rgba(0,0,0,0.35) 100%)" }} />
+    </div>
+  );
+}

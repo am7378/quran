@@ -1,0 +1,15 @@
+# installed packages and the built site (GitHub builds its own copy)
+node_modules/
+dist/
+
+# the data scripts' working files (OCR output, downloads): large, and rebuilt by the scripts
+scripts/.cache/
+scripts/__pycache__/
+
+# local tools and system files
+.claude/
+*.tsbuildinfo
+*.log
+.DS_Store
+Thumbs.db
+desktop.ini
