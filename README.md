@@ -1,6 +1,6 @@
 # The Qur'an — an immersive reader
 
-**Open it:** https://am7378.github.io/quran-reader/
+**Open it:** https://am7378.github.io/quran/
 
 A calm, framed reader for the Qur'an: the Arabic with Quraan Made Easy, Saheeh International and The Clear Quran, word meanings, highlights, notes and reflections. It runs entirely in the browser — no account, no server. Everything a reader saves stays on their own device.
 
