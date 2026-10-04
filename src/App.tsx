@@ -150,6 +150,10 @@ export default function App() {
   // one frame for the whole site: the cover on page one, grown for the index and the reader
   const focus = useUI((s) => s.focus);
   const reflow = useUI((s) => s.reflow);
+  // (in focus the frame meets the strip an iPhone keeps below the page: index.css gives it the frame's colour)
+  useEffect(() => {
+    document.documentElement.classList.toggle("focus-on", focus && phase === "read");
+  }, [focus, phase]);
   const rect =
     focus && phase === "read"
       ? // focus: the frame is the whole screen (below the status bar, opened from the home screen)

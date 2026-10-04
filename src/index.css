@@ -1331,10 +1331,38 @@ mark.hl.fresh {
 }
 
 /* ── opened from the home screen (html.standalone): the page runs under the status bar, nothing
-   over it. On an iPhone the page is laid out short of the screen by the status bar's height (iOS),
-   so what fills the screen (the sky, the notes, a dialog's shade) is made as tall as the screen
-   itself (--app-h, lib/layout.ts) ── */
-html.standalone .fixed.inset-0 {
-  bottom: auto;
-  height: var(--app-h, 100%);
+   over it. On iOS 26 the page is one status bar short of the screen (lib/layout.ts): the strip
+   left at the foot is iOS's own, filled with the page's background colour. The sky fades into that
+   colour just above it, so the two read as one; in focus the frame's colour is the strip's ── */
+.ios-strip-fade {
+  display: none;
+}
+html.ios-short .ios-strip-fade {
+  display: block;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 64px;
+  background: linear-gradient(to bottom, transparent, var(--strip, var(--sky)));
+  pointer-events: none;
+}
+html.ios-short body {
+  background: var(--strip, var(--sky));
+}
+/* (each sky as it is along the foot of the screen, its edges shaded) */
+:root[data-theme="paper"] {
+  --strip: #6b6863;
+}
+:root[data-theme="folio"] {
+  --strip: #7b7158;
+}
+:root[data-theme="lunar"] {
+  --strip: #03060a;
+}
+:root[data-theme="mono"][data-sky="light"] {
+  --strip: #dcd8d2;
+}
+html.ios-short.focus-on body {
+  background: var(--box-bg-solid, var(--sky));
 }

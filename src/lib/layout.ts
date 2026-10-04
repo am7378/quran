@@ -28,19 +28,27 @@ export function safeInsets(): Insets {
  * turned): the browser's bars, the keyboard opening to write a note, a zoom, none of them reshape
  * the frame. A desktop window follows its size as it is resized. From the home screen, the edges
  * the phone keeps for itself are known too (insets).
+ *
+ * iOS 26 (WebKit bug 301108): a home-screen app whose status bar is see-through is drawn from the
+ * top of the screen but made one status bar shorter than it. The strip left at the foot is not the
+ * page's: iOS fills it with the page's background colour and nothing can be drawn there. The page
+ * then ends above the home indicator, so no room is kept for it (short: the strip's height).
  */
 export function useViewport() {
   const touch = typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse)").matches;
   const read = () => {
     const w = touch ? document.documentElement.clientWidth : window.innerWidth;
-    let h = touch ? document.documentElement.clientHeight : window.innerHeight;
-    // an iPhone home-screen app, its status bar see-through: iOS lays the page out short of the
-    // screen by the status bar's height, though the app fills the screen. The screen it is, then.
-    if ((navigator as Navigator & { standalone?: boolean }).standalone === true) {
-      const portrait = matchMedia("(orientation: portrait)").matches;
-      h = Math.max(h, window.innerHeight, portrait ? screen.height : screen.width);
+    const h = touch ? document.documentElement.clientHeight : window.innerHeight;
+    const standalone = isStandalone();
+    const insets = safeInsets();
+    let short = 0;
+    if (standalone && (navigator as Navigator & { standalone?: boolean }).standalone === true) {
+      const screenH = matchMedia("(orientation: portrait)").matches ? screen.height : screen.width;
+      // (only when the page runs under the status bar: under an opaque one it starts below it)
+      short = insets.top > 0 && screenH - h > 1 ? screenH - h : 0;
+      if (short) insets.bottom = Math.max(0, insets.bottom - short);
     }
-    return { w, h, insets: safeInsets(), standalone: isStandalone() };
+    return { w, h, insets, standalone, short };
   };
   const [vp, setVp] = useState(read);
   useEffect(() => {
@@ -58,12 +66,14 @@ export function useViewport() {
       window.removeEventListener("orientationchange", on);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
-  // the layers that fill the screen (the sky, the notes, the dialogs) take this height too (index.css)
+  // the strip at the foot, if any (the sky fades into its colour, index.css), and the room the
+  // home indicator needs, for what is held to the bottom of the screen
   useLayoutEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty("--app-h", `${vp.h}px`);
-    root.style.setProperty("--icb-gap", `${Math.max(0, vp.h - root.clientHeight)}px`);
-  }, [vp.h]);
+    root.classList.toggle("ios-short", vp.short > 0);
+    if (vp.standalone) root.style.setProperty("--app-bottom", `${vp.insets.bottom}px`);
+    else root.style.removeProperty("--app-bottom");
+  }, [vp.short, vp.standalone, vp.insets.bottom]);
   return { ...vp, mobile: vp.w < 768 };
 }
 
@@ -80,7 +90,7 @@ export function frameRect(w: number, h: number, phase: "intro" | "select" | "rea
   if (mobile && app?.standalone) {
     if (phase === "read") {
       const top = ins.top + 46; // the theme, just under the status bar
-      return { left: 10, top, width: w - 20, height: h - top - (ins.bottom + 78) }; // the slider below
+      return { left: 10, top, width: w - 20, height: h - top - (ins.bottom + 74) }; // the slider below
     }
     if (phase === "select") {
       const top = ins.top + 14;

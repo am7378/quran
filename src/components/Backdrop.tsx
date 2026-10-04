@@ -29,6 +29,8 @@ export function Backdrop({ theme, still }: { theme: ThemeId; still?: boolean }) 
       </AnimatePresence>
       {/* keep the edges quiet so the frame reads first */}
       <div className="absolute inset-0" style={{ background: "radial-gradient(130% 100% at 50% 50%, transparent 55%, var(--edge-shade, rgba(0,0,0,0.35)) 100%)" }} />
+      {/* an iPhone home-screen app: into the colour of the strip iOS keeps below the page (index.css) */}
+      <div className="ios-strip-fade" />
     </div>
   );
 }
