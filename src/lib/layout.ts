@@ -10,15 +10,18 @@ export const isStandalone = () =>
 
 /** The phone's own edges the page draws under: the status bar, the home indicator (CSS env()). */
 let probe: HTMLDivElement | null = null;
-export function safeInsets(): Insets {
-  if (typeof document === "undefined" || !document.body) return { top: 0, right: 0, bottom: 0, left: 0 };
+function insetProbe() {
   if (!probe) {
     probe = document.createElement("div");
     probe.style.cssText =
       "position:fixed;left:0;top:0;width:0;height:0;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)";
     document.body.appendChild(probe);
   }
-  const cs = getComputedStyle(probe);
+  return probe;
+}
+export function safeInsets(): Insets {
+  if (typeof document === "undefined" || !document.body) return { top: 0, right: 0, bottom: 0, left: 0 };
+  const cs = getComputedStyle(insetProbe());
   return { top: parseFloat(cs.paddingTop) || 0, right: parseFloat(cs.paddingRight) || 0, bottom: parseFloat(cs.paddingBottom) || 0, left: parseFloat(cs.paddingLeft) || 0 };
 }
 
@@ -33,37 +36,57 @@ export function safeInsets(): Insets {
  * top of the screen but made one status bar shorter than it. The strip left at the foot is not the
  * page's: iOS fills it with the page's background colour and nothing can be drawn there. The page
  * then ends above the home indicator, so no room is kept for it (short: the strip's height).
+ *
+ * iOS can tell the page its insets late (an app opened quickly, from its offline copy): until then
+ * they read 0. The page is short by the status bar's height, so that height is known from the
+ * start; and the insets are read again whenever iOS changes them.
  */
 export function useViewport() {
   const touch = typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse)").matches;
-  const read = () => {
-    const w = touch ? document.documentElement.clientWidth : window.innerWidth;
-    const h = touch ? document.documentElement.clientHeight : window.innerHeight;
+  // keep: on a touch screen the size held so far, while the width stays the same
+  const read = (keep?: { w: number; h: number }) => {
+    let w = touch ? document.documentElement.clientWidth : window.innerWidth;
+    let h = touch ? document.documentElement.clientHeight : window.innerHeight;
+    if (keep && Math.abs(w - keep.w) < 2) ({ w, h } = keep);
     const standalone = isStandalone();
     const insets = safeInsets();
     let short = 0;
     if (standalone && (navigator as Navigator & { standalone?: boolean }).standalone === true) {
+      // the page runs under the status bar (index.html), so a page short of the screen is the bug
       const screenH = matchMedia("(orientation: portrait)").matches ? screen.height : screen.width;
-      // (only when the page runs under the status bar: under an opaque one it starts below it)
-      short = insets.top > 0 && screenH - h > 1 ? screenH - h : 0;
-      if (short) insets.bottom = Math.max(0, insets.bottom - short);
+      short = screenH - h > 1 ? screenH - h : 0;
+      if (short) {
+        insets.top = Math.max(insets.top, short);
+        insets.bottom = Math.max(0, insets.bottom - short);
+      }
     }
     return { w, h, insets, standalone, short };
   };
-  const [vp, setVp] = useState(read);
+  const [vp, setVp] = useState(() => read());
   useEffect(() => {
-    const on = () => {
-      const next = read();
-      setVp((cur) => (touch && Math.abs(next.w - cur.w) < 2 ? cur : next));
-    };
-    // (the insets are only known once the page is laid out: read them again then)
-    const t = window.setTimeout(() => setVp(read()), 60);
+    const same = (a: ReturnType<typeof read>, b: ReturnType<typeof read>) => JSON.stringify(a) === JSON.stringify(b);
+    const take = (keep: boolean) => setVp((cur) => {
+      const next = read(keep && touch ? cur : undefined);
+      return same(next, cur) ? cur : next;
+    });
+    const on = () => take(true);
+    // read again, size and all, once the page has settled; then the insets whenever iOS gives them
+    // (the probe's padding changes with them), and when the app comes back to the screen
+    const timers = [60, 300, 900].map((ms) => window.setTimeout(() => take(false), ms));
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(on) : null;
+    ro?.observe(insetProbe(), { box: "border-box" });
+    const seen = () => document.visibilityState === "visible" && on();
     window.addEventListener("resize", on);
     window.addEventListener("orientationchange", on);
+    window.addEventListener("pageshow", on);
+    document.addEventListener("visibilitychange", seen);
     return () => {
-      window.clearTimeout(t);
+      timers.forEach((t) => window.clearTimeout(t));
+      ro?.disconnect();
       window.removeEventListener("resize", on);
       window.removeEventListener("orientationchange", on);
+      window.removeEventListener("pageshow", on);
+      document.removeEventListener("visibilitychange", seen);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
   // the strip at the foot, if any (the sky fades into its colour, index.css), and the room the
