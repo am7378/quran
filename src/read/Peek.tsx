@@ -260,7 +260,7 @@ export function AyahPeek() {
             "theme-pop pointer-events-auto fixed z-[85] flex flex-col border border-[var(--box-line)] bg-[var(--box-bg-solid)] text-[var(--box-fg)] shadow-[0_24px_60px_-18px_rgba(0,0,0,0.75)] " +
             (phone ? "inset-x-2 bottom-2 max-h-[62vh]" : "")
           }
-          style={pos}
+          style={phone ? { bottom: "calc(0.5rem - var(--icb-gap, 0px))" } : pos}
           initial={phone ? { opacity: 0, y: 40 } : { opacity: 0, y: 8, scale: 0.97 }}
           animate={phone ? { opacity: 1, y: 0 } : { opacity: 1, y: 0, scale: 1 }}
           exit={phone ? { opacity: 0, y: 30, transition: { duration: 0.18 } } : { opacity: 0, y: 6, scale: 0.98, transition: { duration: 0.15 } }}

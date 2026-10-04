@@ -1330,21 +1330,11 @@ mark.hl.fresh {
   letter-spacing: 0.02em;
 }
 
-/* ── opened from the home screen (html.standalone): the page runs under the status bar, whose
-   letters are white; over a light sky a soft shade behind them keeps the time and battery legible ── */
-html.standalone body::after {
-  content: "";
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: 0;
-  height: env(safe-area-inset-top);
-  background: var(--status-scrim, none);
-  pointer-events: none;
-  z-index: 2147483000;
-}
-:root[data-theme="folio"],
-:root[data-theme="paper"],
-:root[data-theme="mono"][data-sky="light"] {
-  --status-scrim: linear-gradient(to bottom, rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0.1));
+/* ── opened from the home screen (html.standalone): the page runs under the status bar, nothing
+   over it. On an iPhone the page is laid out short of the screen by the status bar's height (iOS),
+   so what fills the screen (the sky, the notes, a dialog's shade) is made as tall as the screen
+   itself (--app-h, lib/layout.ts) ── */
+html.standalone .fixed.inset-0 {
+  bottom: auto;
+  height: var(--app-h, 100%);
 }

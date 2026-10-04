@@ -16,7 +16,7 @@ export function CoverThemes({ show, mobile }: { show: boolean; mobile: boolean }
       {show && (
         <motion.div
           className="pointer-events-none fixed inset-x-0 z-20 flex justify-center px-4"
-          style={{ bottom: `calc(${mobile ? 18 : 26}px + env(safe-area-inset-bottom, 0px))` }}
+          style={{ bottom: `calc(${mobile ? 18 : 26}px + env(safe-area-inset-bottom, 0px) - var(--icb-gap, 0px))` }}
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0, transition: { delay: 1.1, duration: 0.8, ease: EASE_OUT } }}
           exit={{ opacity: 0, y: 8, transition: { duration: 0.25 } }}

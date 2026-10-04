@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 
 export type Rect = { left: number; top: number; width: number; height: number };
 export type Insets = { top: number; right: number; bottom: number; left: number };
@@ -31,11 +31,17 @@ export function safeInsets(): Insets {
  */
 export function useViewport() {
   const touch = typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse)").matches;
-  const read = () => ({
-    ...(touch ? { w: document.documentElement.clientWidth, h: document.documentElement.clientHeight } : { w: window.innerWidth, h: window.innerHeight }),
-    insets: safeInsets(),
-    standalone: isStandalone(),
-  });
+  const read = () => {
+    const w = touch ? document.documentElement.clientWidth : window.innerWidth;
+    let h = touch ? document.documentElement.clientHeight : window.innerHeight;
+    // an iPhone home-screen app, its status bar see-through: iOS lays the page out short of the
+    // screen by the status bar's height, though the app fills the screen. The screen it is, then.
+    if ((navigator as Navigator & { standalone?: boolean }).standalone === true) {
+      const portrait = matchMedia("(orientation: portrait)").matches;
+      h = Math.max(h, window.innerHeight, portrait ? screen.height : screen.width);
+    }
+    return { w, h, insets: safeInsets(), standalone: isStandalone() };
+  };
   const [vp, setVp] = useState(read);
   useEffect(() => {
     const on = () => {
@@ -52,6 +58,12 @@ export function useViewport() {
       window.removeEventListener("orientationchange", on);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // the layers that fill the screen (the sky, the notes, the dialogs) take this height too (index.css)
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    root.style.setProperty("--app-h", `${vp.h}px`);
+    root.style.setProperty("--icb-gap", `${Math.max(0, vp.h - root.clientHeight)}px`);
+  }, [vp.h]);
   return { ...vp, mobile: vp.w < 768 };
 }
 

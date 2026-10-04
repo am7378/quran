@@ -1,9 +1,9 @@
 <!doctype html>
 <!--
   The app icon, as the home screen shows it: the night sky of the Classic theme, the site's square
-  frame on it, and a Q in Newsreader italic, cream warming to gold, its tail running out over the
-  frame's edge. Rendered to PNGs by trailer-build/make_icons.mjs (?s=scale: 1 full, ~0.78 for the
-  maskable icon, whose corners a phone may cut away).
+  frame on it, and a Q in Times New Roman Italic (its swept tail), cream warming to gold, its tail running out over the
+  frame's edge. Rendered to PNGs by trailer-build/make_icons.mjs, drawn in close (?s=1.36 about
+  ox=540, oy=520), and smaller for the maskable icon, whose corners a phone may cut away.
 -->
 <html>
 <head>
@@ -30,10 +30,9 @@
   .frame::before { /* the frame's header rule, as on the site */
     content: ""; position: absolute; left: 0; right: 0; top: 62px; height: 2px; background: rgba(239, 233, 221, 0.12);
   }
-  .q {
+  .q { /* the Q of Times New Roman Italic: its tail going down to the left, then sweeping right */
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    font-family: "News"; font-style: italic; font-weight: 420; font-size: 640px; line-height: 1;
-    font-variation-settings: "opsz" 72;
+    font-family: "Times New Roman", "Liberation Serif", serif; font-style: italic; font-weight: 400; font-size: 640px; line-height: 1;
     padding: 0 0 70px 26px;
     background: linear-gradient(172deg, #faf4e6 18%, #efe2bf 55%, #d9b064 92%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
@@ -55,8 +54,12 @@
     </div>
   </div>
   <script>
-    const s = Number(new URLSearchParams(location.search).get("s") || 1);
-    document.getElementById("stage").style.transform = `scale(${s})`;
+    // the drawing drawn in close (as chosen: the frame filling the icon, the Q running out past it,
+    // the star on the frame's corner): s is the zoom, about the point (ox, oy)
+    const q = new URLSearchParams(location.search);
+    const st = document.getElementById("stage");
+    st.style.transformOrigin = `${q.get("ox") || 512}px ${q.get("oy") || 512}px`;
+    st.style.transform = `scale(${Number(q.get("s") || 1)})`;
   </script>
 </body>
 </html>
