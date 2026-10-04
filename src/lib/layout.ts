@@ -2,18 +2,31 @@ import { useEffect, useState } from "react";
 
 export type Rect = { left: number; top: number; width: number; height: number };
 
+/**
+ * The size the frame is laid out for. On a touch screen it is the page's own layout size (not what
+ * a zoom or the keyboard leaves visible), and it changes only when the width does (the phone
+ * turned): the browser's bars, the keyboard opening to write a note, a zoom, none of them reshape
+ * the frame. A desktop window follows its size as it is resized.
+ */
 export function useViewport() {
-  const read = () => ({ w: window.innerWidth, h: window.innerHeight });
+  const touch = typeof matchMedia !== "undefined" && matchMedia("(pointer: coarse)").matches;
+  const read = () =>
+    touch
+      ? { w: document.documentElement.clientWidth, h: document.documentElement.clientHeight }
+      : { w: window.innerWidth, h: window.innerHeight };
   const [vp, setVp] = useState(read);
   useEffect(() => {
-    const on = () => setVp(read());
+    const on = () => {
+      const next = read();
+      setVp((cur) => (touch && Math.abs(next.w - cur.w) < 2 ? cur : next));
+    };
     window.addEventListener("resize", on);
-    window.visualViewport?.addEventListener("resize", on);
+    window.addEventListener("orientationchange", on);
     return () => {
       window.removeEventListener("resize", on);
-      window.visualViewport?.removeEventListener("resize", on);
+      window.removeEventListener("orientationchange", on);
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   return { ...vp, mobile: vp.w < 768 };
 }
 

@@ -113,7 +113,7 @@ export function SurahSummary({
             {card}
           </div>
         )}
-      <div ref={scroller} tabIndex={-1} className="thin-scroll relative min-h-0 flex-1 overflow-y-auto overscroll-contain outline-none [touch-action:pan-y_pinch-zoom]">
+      <div ref={scroller} tabIndex={-1} className="thin-scroll relative min-h-0 flex-1 overflow-y-auto overscroll-contain outline-none [touch-action:pan-y]">
         <div className={cn("mx-auto flex flex-col gap-10 px-5 py-8 md:px-10 md:py-12", !mobile && "max-w-[760px] pl-10")}>
           {mobile && card}
 

@@ -36,12 +36,13 @@ import { AyahSlider } from "@/components/ui/slider";
 import { SurahArt } from "@/components/SurahCard";
 import { SearchBox } from "@/components/SearchBox";
 import { ImmersivePanel, MenuGlyph, Reveal, SettingsGlyph } from "@/components/ImmersivePanel";
-import { BracketButton, Clock } from "@/components/bits";
+import { BracketButton } from "@/components/bits";
 import { arabicText, loadSurah, pad3, translationText, type Surah, type SurahData, type Verse } from "@/lib/data";
 import { useStore, type Highlight, type HighlightField, type Settings } from "@/lib/store";
 import { flipAngle, holdFlip, settleFlip, useUI, type MenuItem } from "@/lib/ui";
 import { playHighlight, strokeEnd, strokeMove, strokeRecently } from "@/lib/sound";
 import { isLongPressMenu } from "@/lib/touch";
+import { useTouchSelect } from "./touchSelect";
 import type { Rect } from "@/lib/layout";
 import type { Result } from "@/lib/search";
 import { EASE_IN_OUT, EASE_OUT, cn, copyText, uid } from "@/lib/utils";
@@ -316,6 +317,11 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       sc.scrollTo({ top: to, behavior: settings.reduceMotion ? "auto" : "smooth" });
     };
     const busy = () => performance.now() < snapping;
+    // only the reader's own scrolling (a finger, the wheel, the keys) brings a page in or out: the
+    // page placing itself (a view switch, an ayah laid out above, a jump) never does
+    let userAt = -Infinity;
+    const byUser = () => fingers > 0 || performance.now() - userAt < 1500;
+    const touched = () => (userAt = performance.now());
     // a finger let go (or the scroll stopped) somewhere inside a page: whole in or whole out
     const settle = () => {
       window.clearTimeout(timer);
@@ -323,13 +329,14 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       const top = sc.scrollTop;
       const down = top >= rest;
       rest = top;
+      if (!byUser() || !sc.classList.contains("flow")) return;
       const { end, a, b } = zones();
       if (top > 1 && top < end - 1) snap(down ? (top > end * 0.12 ? end : 0) : top < end * 0.88 ? 0 : end);
       else if (top > a + 1 && top < b - 1) snap(down ? b : top < a + (b - a) * 0.88 ? a : b);
     };
     const onScroll = () => {
       const top = sc.scrollTop;
-      if (fingers === 0 && !busy()) {
+      if (fingers === 0 && !busy() && byUser() && sc.classList.contains("flow")) {
         const { end, a, b } = zones();
         if (top > last && last <= 1 && top > 1 && top < end) snap(end); // leaving the opening page
         else if (top < last && last >= end - 1 && top < end - 1 && top > 0) snap(0); // back to it
@@ -345,13 +352,18 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       settle();
     };
     // while a page comes into place the wheel waits, so the snap lands where it should
-    const onWheel = (e: WheelEvent) => busy() && e.preventDefault();
+    const onWheel = (e: WheelEvent) => {
+      touched();
+      if (busy()) e.preventDefault();
+    };
     const touchStart = (e: TouchEvent) => {
       fingers = e.touches.length;
       snapping = 0;
+      touched();
     };
     const touchEnd = (e: TouchEvent) => {
       fingers = e.touches.length;
+      touched(); // (the glide after it is still the reader's)
       if (!fingers) {
         window.clearTimeout(timer);
         timer = window.setTimeout(settle, "onscrollend" in window ? 500 : 140); // after any glide
@@ -363,8 +375,12 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     sc.addEventListener("touchstart", touchStart, { passive: true });
     sc.addEventListener("touchend", touchEnd, { passive: true });
     sc.addEventListener("touchcancel", touchEnd, { passive: true });
+    sc.addEventListener("keydown", touched);
+    sc.addEventListener("pointerdown", touched); // (a scrollbar dragged)
     return () => {
       window.clearTimeout(timer);
+      sc.removeEventListener("keydown", touched);
+      sc.removeEventListener("pointerdown", touched);
       sc.removeEventListener("scroll", onScroll);
       sc.removeEventListener("scrollend", onEnd);
       sc.removeEventListener("wheel", onWheel);
@@ -500,8 +516,18 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       return;
     }
     const place = () => {
-      const el = sc.querySelector<HTMLElement>(`[data-n="${activeRef.current}"]`);
-      if (el) sc.scrollTop = el.offsetTop;
+      const n = activeRef.current;
+      const el = sc.querySelector<HTMLElement>(`[data-n="${n}"]`);
+      if (!el) return;
+      let top = el.offsetTop;
+      // scrolling freely, the last ayahs rest with the surah's end at the foot of the frame (as a
+      // jump does): the closing page is not half brought in, to be snapped on into
+      if (settings.view === 3 && n > 0) {
+        const pages = sc.querySelectorAll<HTMLElement>("[data-n]");
+        const closing = pages[pages.length - 1];
+        if (closing && closing !== el) top = Math.min(top, closing.offsetTop - sc.clientHeight);
+      }
+      sc.scrollTop = Math.max(0, top);
     };
     place();
     if (settings.reduceMotion) {
@@ -598,8 +624,10 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
         url: `${location.origin}${location.pathname}#/${surahN}/${v.n}`,
         surah: surahN,
         script: settings.script,
+        theme: settings.theme,
+        box: settings.boxTheme,
       }),
-    [settings.translation, settings.script, surah, surahN],
+    [settings.translation, settings.script, settings.theme, settings.boxTheme, surah, surahN],
   );
 
   // one function for the life of the reader, so the ayahs (memoised) don't redraw each time it would change
@@ -652,11 +680,15 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     });
   };
 
-  const onSelectEnd = () => {
+  // the words selected, by the browser (a mouse) or by the site's own touch selection (given)
+  const onSelectEnd = (given?: unknown) => {
     setTimeout(() => {
       const sel = window.getSelection();
-      if (!sel || sel.isCollapsed || !sel.rangeCount || !data) return;
-      const range = sel.getRangeAt(0);
+      let range: Range;
+      if (given instanceof Range) range = given;
+      else if (sel && !sel.isCollapsed && sel.rangeCount) range = sel.getRangeAt(0);
+      else return;
+      if (!data) return;
       const startEl = range.startContainer instanceof Element ? range.startContainer : range.startContainer.parentElement;
       const field = startEl?.closest<HTMLElement>("[data-field]");
       if (!field || !rootRef.current?.contains(field)) return;
@@ -686,7 +718,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       // the text kept with the highlight is what was shown (the Arabic in the script being read)
       const text = aw ? aw.words.filter((w) => w.start >= s && w.end <= e).map((w) => w.text).join(" ") : canon.slice(s, e);
       addHighlight({ id, key, field: fieldName, start: s, end: e, color: "yellow", text, at: Date.now() });
-      sel.removeAllRanges();
+      sel?.removeAllRanges();
       strokeEnd();
       if (useStore.getState().settings.sounds && !strokeRecently()) playHighlight(Math.min(1, text.length / 120));
       openMenuFor(id, false, true);
@@ -694,6 +726,9 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
   };
   const selectEnd = useRef(onSelectEnd);
   selectEnd.current = onSelectEnd;
+
+  // a touch screen selects words the site's own way: a press held on a word, then drawn across
+  const touchPick = useTouchSelect({ root: rootRef, scroller, scrollsFreely: settings.view === 3, onDone: (r) => selectEnd.current(r) });
 
   /* the marker heard as it is drawn: while a selection in the ayahs grows or shrinks under a
      mouse (or a phone's handles), a felt-tip sound follows it */
@@ -1085,8 +1120,8 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     if (toward) settleFlip(false, 0, toward);
     setFlipped(false);
   };
-  // the context switch in the header (scrolling freely, or the translation alone)
-  const showCtx = settings.translation === "qme" && settings.readingMode !== "arabic" && (settings.view === 3 || settings.readingMode === "translation");
+  // the context switch, at the foot of the frame: wherever Quraan Made Easy's text is showing
+  const showCtx = settings.translation === "qme" && settings.readingMode !== "arabic";
 
   const swipeOff = !data || focus || !!panel || aboutOpen;
   useEffect(() => {
@@ -1189,7 +1224,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       {/* header */}
       <header
         className={cn(
-          "relative z-20 flex shrink-0 items-center justify-between gap-1.5 overflow-hidden border-b border-[var(--box-line)] pl-3 pr-1 transition-[height,opacity,border-color] duration-500 sm:gap-2 sm:pl-4 sm:pr-1.5 md:gap-3 md:pl-7 md:pr-2",
+          "relative z-20 flex shrink-0 items-center justify-between gap-1.5 overflow-hidden border-b border-[var(--box-line)] pl-3 pr-[7px] transition-[height,opacity,border-color] duration-500 sm:gap-2 sm:pl-4 md:gap-3 md:pl-7 md:pr-[9px]",
           focus ? "h-0 border-transparent opacity-0" : "h-12 md:h-[52px]",
         )}
         aria-hidden={focus || undefined}
@@ -1230,15 +1265,6 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
           <IconTool label="Focus: only the Qur'an (F)" onClick={() => enterFocus(true)}>
             <Maximize2 size={15} strokeWidth={1.5} />
           </IconTool>
-          {/* between full screen and the view switch: on a phone a pill like the view switch, wider in words */}
-          {showCtx &&
-            (mobile ? (
-              <ContextPill on={settings.showContext} onToggle={toggleContext} />
-            ) : (
-              <div className="label-sm flex items-center px-2">
-                <ContextToggle on={settings.showContext} onToggle={toggleContext} />
-              </div>
-            ))}
           <ViewToggle settings={settings} onView={switchView} onMode={setMode} />
         </div>
       </header>
@@ -1347,16 +1373,20 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       {/* footer */}
       <footer
         className={cn(
-          "relative z-20 flex shrink-0 items-center justify-between gap-4 overflow-hidden border-t border-[var(--box-line)] px-5 transition-[height,opacity,border-color] duration-500 md:px-7",
+          "frame-foot relative z-20 flex shrink-0 items-center justify-between gap-4 overflow-hidden border-t border-[var(--box-line)] px-5 transition-[height,opacity,border-color] duration-500 md:px-7",
           focus ? "h-0 border-transparent opacity-0" : "h-8",
         )}
         aria-hidden={focus || undefined}
       >
-        <span className="label-sm truncate text-[var(--box-faint)]">
+        <span className="label-sm min-w-0 truncate text-[var(--box-faint)]">
           {verse ? `juz ${verse.j} · ` : ""}
           {surah.place === "makkah" ? "Makkan" : "Madinan"} · {surah.count} ayat
         </span>
-        {!mobile && <Clock className="label-sm text-[var(--box-faint)]" />}
+        {showCtx && (
+          <div className="label-sm -mr-2 flex h-full shrink-0 items-center">
+            <ContextToggle on={settings.showContext} onToggle={toggleContext} />
+          </div>
+        )}
       </footer>
 
       {/* panels */}
@@ -1366,6 +1396,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
         <SearchPanelBody surahs={surahs} juz={juz} onPick={onPick} onClose={() => setPanel(null)} current={surahN} onSurah={(n) => go(n, 1)} onGo={go} />
       </ImmersivePanel>
 
+      {touchPick}
       {/* floating layers live on <body>: the tilted frame would re-anchor fixed positioning */}
       {createPortal(
         <>
@@ -1436,14 +1467,16 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       {outside &&
         createPortal(
           <div className={cn("absolute inset-0 transition-[opacity,visibility] duration-500", focus &&"pointer-events-none invisible opacity-0")}>
+                {/* the ayah's theme: one ayah at a time, with its translation showing (not the Arabic alone,
+                    not scrolling freely; a book of the translation has its headings in the text) */}
                 <AnimatePresence mode="wait">
-                  {settings.view === 1 && theme && active >= 1 && !panel && !aboutOpen && (
+                  {settings.view === 1 && settings.readingMode !== "arabic" && theme && active >= 1 && !panel && !aboutOpen && (
                     <motion.div
                       key={theme}
                       className="theme-tag-at pointer-events-none absolute bottom-full mb-3 max-w-full md:mb-4"
                       initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
                       animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                      exit={{ opacity: 0, y: -6, filter: "blur(4px)" }}
+                      exit={{ opacity: 0, y: -6, filter: "blur(4px)", transition: { duration: 0.2 } }}
                       transition={{ duration: 0.5, ease: EASE_OUT }}
                     >
                       <span className="theme-tag block truncate font-serif text-[17px] italic text-[var(--outside-fg)] md:text-[20px]">{theme}</span>
@@ -1663,12 +1696,11 @@ function FocusExit({ onExit }: { onExit: () => void }) {
       aria-label="Leave focus (Esc)"
       title="Leave focus (Esc)"
       className={cn(
-        "pill absolute right-3 top-3 z-30 flex h-9 items-center gap-2 border border-[var(--box-line)] bg-[var(--box-bg-solid)] px-3 text-[var(--box-muted)] transition-opacity duration-500 hover:text-[var(--box-fg)] md:right-5 md:top-5",
+        "pill absolute right-3 top-3 z-30 flex h-9 w-9 items-center justify-center border border-[var(--box-line)] bg-[var(--box-bg-solid)] text-[var(--box-muted)] transition-opacity duration-500 hover:text-[var(--box-fg)] md:right-5 md:top-5",
         shown ? "opacity-100" : touch ? "opacity-40" : "pointer-events-none opacity-0",
       )}
     >
       <Minimize2 size={14} strokeWidth={1.5} />
-      <span className="label">Leave focus</span>
     </button>
   );
 }
@@ -1729,7 +1761,8 @@ function ViewToggle({ settings, onView, onMode }: { settings: Settings; onView: 
   const close = useCallback(() => setOpen(null), []);
   return (
     <>
-      <div className="pill ml-0.5 flex border border-[var(--box-line)] p-0.5 sm:ml-1 md:ml-2" role="radiogroup" aria-label="View">
+      {/* (the gap beside it the same as the gap above it: in a rounded frame its corner nests in the frame's) */}
+      <div className="view-switch pill ml-0.5 flex border border-[var(--box-line)] p-0.5 sm:ml-1 md:ml-2" role="radiogroup" aria-label="View">
         {([1, 3] as const).map((v) => {
           const on = view === v;
           return (
@@ -1831,24 +1864,6 @@ function ModeMenu({ at, settings, onPick, onClose }: { at: DOMRect | null; setti
         </motion.div>
       )}
     </AnimatePresence>
-  );
-}
-
-/** The context switch on a phone: one segment in the view switch's own frame, filled while the
- *  bracketed context shows (as the chosen view is); "(…)" is how the context reads in the text. */
-function ContextPill({ on, onToggle }: { on: boolean; onToggle: () => void }) {
-  const label = on ? "Hide the bracketed context" : "Show the bracketed context";
-  return (
-    <button type="button" onClick={onToggle} aria-pressed={on} aria-label={label} title={label} className="pill ml-0.5 flex shrink-0 border border-[var(--box-line)] p-0.5">
-      <span
-        className={cn(
-          "pill flex h-7 w-6 items-center justify-center transition-colors duration-300",
-          on ? "bg-[var(--box-fg)] text-[var(--box-bg-solid)]" : "text-[var(--box-muted)]",
-        )}
-      >
-        <span className="font-serif text-[13px] italic leading-none">(…)</span>
-      </span>
-    </button>
   );
 }
 

@@ -6,6 +6,7 @@ import { themeOf } from "@/lib/surahThemes";
 import { AnimatePresence, motion } from "framer-motion";
 import { Copy, Download, ImageIcon, Link2, X as Close } from "lucide-react";
 import { EASE_OUT, cn, copyText } from "@/lib/utils";
+import type { ThemeId } from "@/lib/themes";
 
 export type ShareFormat = "square" | "landscape" | "story";
 const SIZES: Record<ShareFormat, [number, number]> = { square: [1080, 1080], landscape: [1600, 900], story: [1080, 1920] };
@@ -18,6 +19,8 @@ export type ShareContent = {
   url: string;
   surah?: number; // the image takes on this surah's card art
   script?: "uthmani" | "indopak";
+  theme?: ThemeId; // drawn the way this theme is
+  box?: "night" | "paper";
 };
 
 /**
@@ -123,70 +126,569 @@ export function grain() {
   return (grainTile = c);
 }
 
-/** Draw the ayah and its translation — nothing else but the reference. */
+/* ── each theme's way of drawing it ─────────────────────────────────
+   The same picture in every theme (the ayah, its translation, the reference and nothing else), set
+   the way the theme sets the reader: its colours, lettering, rules and ground. */
+
+type Area = { top: number; bottom: number; padX: number };
+type Ctx = { W: number; H: number; S: number; m: number; fs: number; format: ShareFormat; art: HTMLCanvasElement | null; seed: number };
+type Look = {
+  art?: "colour" | "grey"; // the surah card's art under it
+  fonts: string[]; // loaded before drawing
+  ar: string;
+  tr: string;
+  trFont: (px: number) => string;
+  /** the ground, the frame and its marks; returns where the text may go */
+  paint: (g: CanvasRenderingContext2D, k: Ctx) => Area;
+  /** the mark between the Arabic and the translation */
+  rule: (g: CanvasRenderingContext2D, x: number, y: number, k: Ctx) => void;
+  reference: (g: CanvasRenderingContext2D, k: Ctx, name: string, ref: string) => void;
+};
+
+const spacing = (g: CanvasRenderingContext2D, px: number) => {
+  if ("letterSpacing" in g) (g as unknown as { letterSpacing: string }).letterSpacing = `${Math.round(px)}px`;
+};
+const line = (g: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number) => {
+  g.beginPath();
+  g.moveTo(x0, y0);
+  g.lineTo(x1, y1);
+  g.stroke();
+};
+function glowAt(g: CanvasRenderingContext2D, k: Ctx, x: number, y: number, r: number, col: string) {
+  const rg = g.createRadialGradient(x, y, 0, x, y, r);
+  rg.addColorStop(0, col);
+  rg.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = rg;
+  g.fillRect(0, 0, k.W, k.H);
+}
+function grainOn(g: CanvasRenderingContext2D, k: Ctx, alpha = 1) {
+  g.save();
+  g.globalAlpha = alpha;
+  g.fillStyle = g.createPattern(grain(), "repeat")!;
+  g.fillRect(0, 0, k.W, k.H);
+  g.restore();
+}
+function rounded(g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
+  g.beginPath();
+  g.moveTo(x + r, y);
+  g.arcTo(x + w, y, x + w, y + h, r);
+  g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r);
+  g.arcTo(x, y, x + w, y, r);
+  g.closePath();
+}
+/** the art in greys, as Monochrome shows the surahs' cards */
+function grey(c: HTMLCanvasElement) {
+  const g = c.getContext("2d")!;
+  const img = g.getImageData(0, 0, c.width, c.height);
+  const a = img.data;
+  for (let i = 0; i < a.length; i += 4) a[i] = a[i + 1] = a[i + 2] = a[i] * 0.299 + a[i + 1] * 0.587 + a[i + 2] * 0.114;
+  g.putImageData(img, 0, 0);
+  return c;
+}
+/** a seeded random: a surah's sky comes out the same each time */
+function seeded(seed: number) {
+  let s = (Math.abs(seed) * 7919 + 104729) % 233280 || 1;
+  return () => (s = (s * 9301 + 49297) % 233280) / 233280;
+}
+
+/* Classic: lapis night (or the surah card's art under a veil), a gold rule */
+const classic: Look = {
+  art: "colour",
+  fonts: ['400 40px "Newsreader Variable"', '24px "Geist Mono Variable"'],
+  ar: "#efe9dd",
+  tr: "rgba(239,233,221,0.86)",
+  trFont: (px) => `400 ${px}px "Newsreader Variable"`,
+  paint(g, k) {
+    const { W, H, S, m, fs, art } = k;
+    if (art) {
+      // the surah card's art, blurred by scaling, under a veil dark enough for the text
+      const pal = themeOf(k.seed).p;
+      g.drawImage(art, 0, 0, W, H);
+      const veil = g.createLinearGradient(0, 0, 0, H);
+      veil.addColorStop(0, "rgba(6,8,12,0.52)");
+      veil.addColorStop(0.5, "rgba(6,8,12,0.44)");
+      veil.addColorStop(1, "rgba(6,8,12,0.66)");
+      g.fillStyle = veil;
+      g.fillRect(0, 0, W, H);
+      glowAt(g, k, W * 0.82, H * 0.08, Math.max(W, H) * 0.6, hexA(pal[0], 0.22));
+      glowAt(g, k, W * 0.1, H * 0.95, Math.max(W, H) * 0.7, hexA(pal[1], 0.26));
+    } else {
+      // lapis night with two soft glows
+      const bg = g.createLinearGradient(0, 0, W * 0.5, H);
+      bg.addColorStop(0, "#15284a");
+      bg.addColorStop(1, "#070b14");
+      g.fillStyle = bg;
+      g.fillRect(0, 0, W, H);
+      glowAt(g, k, W * 0.82, H * 0.08, Math.max(W, H) * 0.6, "rgba(201,162,74,0.20)");
+      glowAt(g, k, W * 0.1, H * 0.95, Math.max(W, H) * 0.7, "rgba(62,107,115,0.32)");
+    }
+    grainOn(g, k);
+    g.strokeStyle = "rgba(239,233,221,0.16)";
+    g.lineWidth = 2;
+    g.strokeRect(m, m, W - 2 * m, H - 2 * m);
+    return { top: m + S * 0.07, bottom: H - m - fs * 4.6, padX: W * (k.format === "landscape" ? 0.09 : 0.11) };
+  },
+  rule(g, x, y) {
+    g.strokeStyle = "rgba(201,162,74,0.7)";
+    g.lineWidth = 2;
+    line(g, x - 24, y, x + 24, y);
+  },
+  reference(g, k, name, ref) {
+    g.textAlign = "center";
+    g.fillStyle = "rgba(239,233,221,0.58)";
+    g.font = `${k.fs}px "Geist Mono Variable", monospace`;
+    spacing(g, k.fs * 0.18);
+    g.fillText(`${name}  ·  ${ref}`.toUpperCase(), k.W / 2, k.H - k.m - k.fs * 2.2);
+  },
+};
+
+/* Monochrome: a charcoal sheet on stone, drawn square: viewfinder marks, a dashed foot with the
+   reference set like a sheet's footer, a checkerboard strip beneath; the art in greys ("White":
+   the sheet turned to paper) */
+function mono(white: boolean): Look {
+  const fg = white ? "22,22,22" : "236,230,220";
+  const geom = (k: Ctx) => {
+    const q = Math.round(k.S * 0.012); // the checkerboard's squares
+    const x0 = k.m, y0 = k.m, x1 = k.W - k.m, y1 = k.H - k.m - 2 * q;
+    return { q, x0, y0, x1, y1, foot: y1 - k.fs * 4.6, pad: k.S * 0.045 };
+  };
+  return {
+    art: "grey",
+    fonts: ['400 40px "Geist Variable"', '24px "Geist Mono Variable"', '500 24px "Geist Mono Variable"'],
+    ar: `rgb(${fg})`,
+    tr: `rgba(${fg},0.84)`,
+    trFont: (px) => `400 ${px}px "Geist Variable"`,
+    paint(g, k) {
+      const { W, H, S, art } = k;
+      const { q, x0, y0, x1, y1, foot, pad } = geom(k);
+      g.fillStyle = "#e6e2dc";
+      g.fillRect(0, 0, W, H);
+      grainOn(g, k, 0.7);
+      g.fillStyle = white ? "#f3f0ea" : "#161616";
+      g.fillRect(x0, y0, x1 - x0, y1 - y0);
+      if (art) {
+        g.save();
+        g.beginPath();
+        g.rect(x0, y0, x1 - x0, y1 - y0);
+        g.clip();
+        g.globalAlpha = white ? 0.1 : 0.22;
+        g.drawImage(art, 0, 0, W, H);
+        g.restore();
+      }
+      g.strokeStyle = "#161616";
+      g.lineWidth = 2;
+      g.strokeRect(x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2);
+      // the checkerboard strip
+      g.fillStyle = "#161616";
+      for (let r = 0; r < 2; r++)
+        for (let x = x0, i = 0; x < x1; x += q, i++) if ((i + r) % 2 === 0) g.fillRect(x, y1 + r * q, Math.min(q, x1 - x), q);
+      // viewfinder marks around the text
+      const arm = S * 0.04, vy1 = foot - pad * 0.7;
+      g.strokeStyle = `rgba(${fg},0.42)`;
+      g.lineWidth = 2;
+      g.beginPath();
+      for (const [cx, cy, dx, dy] of [
+        [x0 + pad, y0 + pad, 1, 1],
+        [x1 - pad, y0 + pad, -1, 1],
+        [x0 + pad, vy1, 1, -1],
+        [x1 - pad, vy1, -1, -1],
+      ]) {
+        g.moveTo(cx, cy + dy * arm);
+        g.lineTo(cx, cy);
+        g.lineTo(cx + dx * arm, cy);
+      }
+      g.stroke();
+      // the dashed rule above the foot
+      g.strokeStyle = `rgba(${fg},0.3)`;
+      g.setLineDash([k.fs * 0.55, k.fs * 0.45]);
+      line(g, x0, foot, x1, foot);
+      g.setLineDash([]);
+      return { top: y0 + pad + S * 0.06, bottom: vy1 - S * 0.05, padX: W * (k.format === "landscape" ? 0.1 : 0.13) };
+    },
+    rule(g, x, y) {
+      g.strokeStyle = `rgba(${fg},0.5)`;
+      g.lineWidth = 2;
+      line(g, x - 46, y, x - 12, y);
+      line(g, x + 12, y, x + 46, y);
+      g.beginPath();
+      g.arc(x, y, 6, 0, Math.PI * 2);
+      g.stroke();
+    },
+    reference(g, k, name, ref) {
+      const { x0, x1, y1, foot, pad } = geom(k);
+      const y = (foot + y1) / 2;
+      g.textBaseline = "middle";
+      // the number large at the right, set apart by a rule, as on the sheet
+      g.textAlign = "right";
+      g.fillStyle = `rgb(${fg})`;
+      g.font = `500 ${Math.round(k.fs * 1.7)}px "Geist Mono Variable", monospace`;
+      spacing(g, 0);
+      g.fillText(ref, x1 - pad, y);
+      const rx = x1 - pad - g.measureText(ref).width - pad * 0.8;
+      g.strokeStyle = `rgba(${fg},0.3)`;
+      g.lineWidth = 2;
+      line(g, rx, foot, rx, y1);
+      g.textAlign = "left";
+      g.fillStyle = `rgba(${fg},0.72)`;
+      g.font = `${k.fs}px "Geist Mono Variable", monospace`;
+      spacing(g, k.fs * 0.12);
+      g.fillText(name.toUpperCase(), x0 + pad, y);
+    },
+  };
+}
+
+/* Atlas: a bone sheet on black, ink type; the dark sheet meeting it at the foot, an ember line where
+   they meet, an ember mark and the number in ember */
+const atlas: Look = (() => {
+  const band = (k: Ctx) => Math.round(k.fs * 5.4);
+  return {
+    fonts: ['400 40px "Geist Variable"', '400 24px "IBM Plex Mono"'],
+    ar: "#0e0e0c",
+    tr: "rgba(14,14,12,0.8)",
+    trFont: (px: number) => `400 ${px}px "Geist Variable"`,
+    paint(g: CanvasRenderingContext2D, k: Ctx) {
+      const { W, H, S, m } = k;
+      const b = band(k);
+      g.fillStyle = "#070707";
+      g.fillRect(0, 0, W, H);
+      g.fillStyle = "#ebe9dc";
+      g.fillRect(m, m, W - 2 * m, H - 2 * m - b);
+      g.fillStyle = "#0e0e0c";
+      g.fillRect(m, H - m - b, W - 2 * m, b);
+      g.fillStyle = "#ff5a2e";
+      g.fillRect(m, H - m - b - 2, W - 2 * m, 4);
+      grainOn(g, k, 0.8);
+      // an ember mark and a hairline along the head
+      const pad = S * 0.05, sq = Math.round(S * 0.02);
+      g.fillStyle = "#ff5a2e";
+      g.fillRect(m + pad, m + pad, sq, sq);
+      g.strokeStyle = "rgba(14,14,12,0.22)";
+      g.lineWidth = 2;
+      line(g, m + pad + sq + S * 0.025, m + pad + sq / 2, W - m - pad, m + pad + sq / 2);
+      return { top: m + pad + S * 0.08, bottom: H - m - b - S * 0.06, padX: W * (k.format === "landscape" ? 0.1 : 0.12) };
+    },
+    rule(g: CanvasRenderingContext2D, x: number, y: number) {
+      g.fillStyle = "#ff5a2e";
+      g.fillRect(x - 22, y - 3, 44, 6);
+    },
+    reference(g: CanvasRenderingContext2D, k: Ctx, name: string, ref: string) {
+      const y = k.H - k.m - band(k) / 2;
+      const pad = k.S * 0.05;
+      g.textBaseline = "middle";
+      g.font = `400 ${k.fs}px "IBM Plex Mono", monospace`;
+      spacing(g, k.fs * 0.14);
+      g.textAlign = "left";
+      g.fillStyle = "rgba(235,233,220,0.82)";
+      g.fillText(name.toUpperCase(), k.m + pad, y);
+      g.textAlign = "right";
+      g.fillStyle = "#ff5a2e";
+      g.fillText(ref, k.W - k.m - pad, y);
+    },
+  };
+})();
+
+/* Folio: sand paper in afternoon light, an ink frame, an editorial page's double rules, spaced
+   capitals */
+const folio: Look = (() => {
+  const rules = (k: Ctx) => ({ head: k.m + k.S * 0.07, foot: k.H - k.m - k.fs * 4.8, gap: k.S * 0.012, pad: k.S * 0.05 });
+  return {
+    fonts: ['400 40px "Newsreader Variable"', '400 24px "Josefin Sans Variable"'],
+    ar: "#141210",
+    tr: "rgba(20,18,16,0.86)",
+    trFont: (px: number) => `400 ${px}px "Newsreader Variable"`,
+    paint(g: CanvasRenderingContext2D, k: Ctx) {
+      const { W, H, S, m } = k;
+      const { head, foot, gap, pad } = rules(k);
+      g.fillStyle = "#d8c294";
+      g.fillRect(0, 0, W, H);
+      const light = g.createLinearGradient(0, 0, W, H);
+      light.addColorStop(0, "rgba(255,244,214,0.42)");
+      light.addColorStop(0.45, "rgba(255,244,214,0)");
+      light.addColorStop(1, "rgba(70,48,12,0.2)");
+      g.fillStyle = light;
+      g.fillRect(0, 0, W, H);
+      grainOn(g, k);
+      grainOn(g, k);
+      g.strokeStyle = "#141210";
+      g.lineWidth = 3;
+      g.strokeRect(m, m, W - 2 * m, H - 2 * m);
+      const xa = m + pad, xb = W - m - pad;
+      g.lineWidth = 5;
+      line(g, xa, head, xb, head);
+      g.lineWidth = 1.5;
+      line(g, xa, head + gap, xb, head + gap);
+      line(g, xa, foot, xb, foot);
+      g.lineWidth = 5;
+      line(g, xa, foot + gap, xb, foot + gap);
+      return { top: head + gap + S * 0.06, bottom: foot - S * 0.05, padX: W * (k.format === "landscape" ? 0.1 : 0.12) };
+    },
+    rule(g: CanvasRenderingContext2D, x: number, y: number) {
+      g.strokeStyle = "rgba(20,18,16,0.7)";
+      g.lineWidth = 1.5;
+      line(g, x - 44, y, x - 14, y);
+      line(g, x + 14, y, x + 44, y);
+      g.save();
+      g.translate(x, y);
+      g.rotate(Math.PI / 4);
+      g.fillStyle = "#141210";
+      g.fillRect(-5, -5, 10, 10);
+      g.restore();
+    },
+    reference(g: CanvasRenderingContext2D, k: Ctx, name: string, ref: string) {
+      const { foot, gap } = rules(k);
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillStyle = "rgba(20,18,16,0.78)";
+      g.font = `400 ${Math.round(k.fs * 1.08)}px "Josefin Sans Variable", sans-serif`;
+      spacing(g, k.fs * 0.3);
+      g.fillText(`${name}  ·  ${ref}`.toUpperCase(), k.W / 2, (foot + gap + k.H - k.m) / 2 + k.fs * 0.1);
+    },
+  };
+})();
+
+/* Paper: a torn sheet held by a binder clip, lying a touch askew on the grey desk; typewriter
+   reference, a red pencil stroke */
+function binderClip(g: CanvasRenderingContext2D, cx: number, top: number, s: number) {
+  g.save();
+  g.translate(cx - 20 * s, top - 18 * s);
+  g.scale(s, s);
+  g.shadowColor = "rgba(0,0,0,0.35)";
+  g.shadowBlur = 5 * s;
+  g.shadowOffsetY = 2 * s;
+  g.fillStyle = "#1b1b1b";
+  g.beginPath();
+  g.moveTo(6, 9);
+  g.lineTo(34, 9);
+  g.lineTo(37, 27);
+  g.lineTo(3, 27);
+  g.closePath();
+  g.fill();
+  g.shadowColor = "transparent";
+  g.fillStyle = "#3a3a3a";
+  g.beginPath();
+  g.moveTo(6, 9);
+  g.lineTo(34, 9);
+  g.lineTo(35, 13);
+  g.lineTo(5, 13);
+  g.closePath();
+  g.fill();
+  g.lineCap = "round";
+  g.strokeStyle = "#b8bcc0";
+  g.lineWidth = 1.6;
+  g.beginPath();
+  g.moveTo(11, 10);
+  g.bezierCurveTo(10, 3, 13, 1, 20, 1);
+  g.bezierCurveTo(27, 1, 30, 3, 29, 10);
+  g.stroke();
+  g.strokeStyle = "#8d9196";
+  g.lineWidth = 1.1;
+  g.beginPath();
+  g.moveTo(14, 10);
+  g.bezierCurveTo(13.5, 5, 15.5, 3.5, 20, 3.5);
+  g.bezierCurveTo(24.5, 3.5, 26.5, 5, 26, 10);
+  g.stroke();
+  g.restore();
+}
+const paper: Look = (() => {
+  const sheet = (k: Ctx) => {
+    const i = k.m * 1.3;
+    return { x0: i, y0: i * 1.25, x1: k.W - i, y1: k.H - i };
+  };
+  return {
+    fonts: ['400 40px "Newsreader Variable"', '400 24px "Courier Prime"'],
+    ar: "#23211c",
+    tr: "rgba(35,33,28,0.84)",
+    trFont: (px: number) => `400 ${px}px "Newsreader Variable"`,
+    paint(g: CanvasRenderingContext2D, k: Ctx) {
+      const { W, H, S } = k;
+      const { x0, y0, x1, y1 } = sheet(k);
+      g.fillStyle = "#8e8a82";
+      g.fillRect(0, 0, W, H);
+      glowAt(g, k, W * 0.45, H * 0.4, Math.max(W, H) * 0.7, "rgba(255,255,255,0.14)");
+      grainOn(g, k);
+      grainOn(g, k);
+      // the sheet, its foot torn
+      const rnd = seeded(k.seed + 3);
+      const step = S * 0.012;
+      g.save();
+      g.translate(W / 2, H / 2);
+      g.rotate(-0.006);
+      g.translate(-W / 2, -H / 2);
+      g.beginPath();
+      g.moveTo(x0, y0);
+      g.lineTo(x1, y0);
+      g.lineTo(x1, y1);
+      for (let x = x1; x > x0; x -= step) g.lineTo(x, y1 + (rnd() - 0.5) * S * 0.009);
+      g.lineTo(x0, y1);
+      g.closePath();
+      g.shadowColor = "rgba(20,18,14,0.5)";
+      g.shadowBlur = S * 0.04;
+      g.shadowOffsetY = S * 0.016;
+      const sh = g.createLinearGradient(x0, y0, x1, y1);
+      sh.addColorStop(0, "#f1eee6");
+      sh.addColorStop(0.55, "#ebe6da");
+      sh.addColorStop(1, "#e2dccd");
+      g.fillStyle = sh;
+      g.fill();
+      g.shadowColor = "transparent";
+      g.clip();
+      grainOn(g, k, 0.8);
+      g.restore();
+      binderClip(g, W / 2, y0, S * 0.0042);
+      return { top: y0 + S * 0.1, bottom: y1 - k.fs * 4.6, padX: W * (k.format === "landscape" ? 0.12 : 0.15) };
+    },
+    rule(g: CanvasRenderingContext2D, x: number, y: number) {
+      g.strokeStyle = "rgba(155,61,44,0.85)";
+      g.lineWidth = 3.5;
+      g.lineCap = "round";
+      g.beginPath();
+      g.moveTo(x - 34, y + 2);
+      g.quadraticCurveTo(x, y - 3, x + 34, y - 1);
+      g.stroke();
+      g.lineCap = "butt";
+    },
+    reference(g: CanvasRenderingContext2D, k: Ctx, name: string, ref: string) {
+      const { y1 } = sheet(k);
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillStyle = "rgba(35,33,28,0.74)";
+      g.font = `400 ${Math.round(k.fs * 1.1)}px "Courier Prime", monospace`;
+      spacing(g, k.fs * 0.06);
+      g.fillText(`${name} ${ref}`, k.W / 2, y1 - k.fs * 2.4);
+    },
+  };
+})();
+
+/* Lunar: a moon over the night with its stars, the sheet of night glass over it with round corners,
+   light lettering widely spaced */
+const lunar: Look = (() => {
+  const inset = (k: Ctx) => Math.round(k.m * 1.5);
+  return {
+    fonts: ['300 40px "Geist Variable"', '400 24px "Jost Variable"'],
+    ar: "#e6edf5",
+    tr: "rgba(230,237,245,0.82)",
+    trFont: (px: number) => `300 ${px}px "Geist Variable"`,
+    paint(g: CanvasRenderingContext2D, k: Ctx) {
+      const { W, H, S } = k;
+      const p = inset(k);
+      const sky = g.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, "#0c1d31");
+      sky.addColorStop(0.55, "#07111d");
+      sky.addColorStop(1, "#04080f");
+      g.fillStyle = sky;
+      g.fillRect(0, 0, W, H);
+      const rnd = seeded(k.seed + 11);
+      const stars = Math.round((140 * W * H) / (1080 * 1080));
+      for (let i = 0; i < stars; i++) {
+        g.fillStyle = `rgba(223,232,242,${0.15 + rnd() * 0.55})`;
+        g.beginPath();
+        g.arc(rnd() * W, rnd() * H, 0.8 + rnd() * 1.6, 0, Math.PI * 2);
+        g.fill();
+      }
+      // the moon in the corner, above the words, its light falling on the glass
+      const R = S * 0.075, mx = W - p * 0.7 - R * 0.35, my = p * 0.7 + R * 0.35;
+      glowAt(g, k, mx, my, R * 6, "rgba(200,215,235,0.2)");
+      const disc = g.createRadialGradient(mx - R * 0.3, my - R * 0.3, R * 0.1, mx, my, R);
+      disc.addColorStop(0, "#f6f8fb");
+      disc.addColorStop(1, "#c3d0dd");
+      g.fillStyle = disc;
+      g.beginPath();
+      g.arc(mx, my, R, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = "rgba(120,140,165,0.12)";
+      for (const [dx, dy, r] of [[-0.3, -0.1, 0.28], [0.25, 0.3, 0.2], [0.1, -0.4, 0.14]]) {
+        g.beginPath();
+        g.arc(mx + dx * R, my + dy * R, r * R, 0, Math.PI * 2);
+        g.fill();
+      }
+      // the glass, round-cornered, its dark rim
+      const r = S * 0.05;
+      rounded(g, p, p, W - 2 * p, H - 2 * p, r);
+      g.fillStyle = "rgba(10,19,31,0.74)";
+      g.fill();
+      g.strokeStyle = "#03060b";
+      g.lineWidth = 8;
+      g.stroke();
+      rounded(g, p + 10, p + 10, W - 2 * p - 20, H - 2 * p - 20, r - 10);
+      g.strokeStyle = "rgba(230,237,245,0.1)";
+      g.lineWidth = 2;
+      g.stroke();
+      grainOn(g, k, 0.7);
+      return { top: p + S * 0.08, bottom: H - p - k.fs * 4.6, padX: W * (k.format === "landscape" ? 0.11 : 0.14) };
+    },
+    rule(g: CanvasRenderingContext2D, x: number, y: number) {
+      for (const d of [-1, 1]) {
+        const lg = g.createLinearGradient(x + d * 12, y, x + d * 56, y);
+        lg.addColorStop(0, "rgba(217,228,239,0.5)");
+        lg.addColorStop(1, "rgba(217,228,239,0)");
+        g.strokeStyle = lg;
+        g.lineWidth = 1.5;
+        line(g, x + d * 12, y, x + d * 56, y);
+      }
+      g.fillStyle = "#d9e4ef";
+      g.beginPath();
+      g.arc(x, y, 5, 0, Math.PI * 2);
+      g.fill();
+    },
+    reference(g: CanvasRenderingContext2D, k: Ctx, name: string, ref: string) {
+      g.textAlign = "center";
+      g.textBaseline = "middle";
+      g.fillStyle = "rgba(230,237,245,0.56)";
+      g.font = `400 ${k.fs}px "Jost Variable", sans-serif`;
+      spacing(g, k.fs * 0.32);
+      g.fillText(`${name}  ·  ${ref}`.toUpperCase(), k.W / 2, k.H - inset(k) - k.fs * 2.3);
+    },
+  };
+})();
+
+function lookOf(theme: ThemeId | undefined, box: "night" | "paper" | undefined): Look {
+  switch (theme) {
+    case "mono":
+      return mono(box === "paper");
+    case "atlas":
+      return atlas;
+    case "folio":
+      return folio;
+    case "paper":
+      return paper;
+    case "lunar":
+      return lunar;
+    default:
+      return classic;
+  }
+}
+
+/** Draw the ayah and its translation — nothing else but the reference — the current theme's way. */
 export async function renderAyahImage(o: ShareContent, format: ShareFormat): Promise<Blob> {
   const [W, H] = SIZES[format];
+  const look = lookOf(o.theme, o.box);
   const arFont = o.script === "indopak" ? '"IndoPak"' : '"KFGQPC HAFS"';
-  await Promise.all([
-    document.fonts.load(`64px ${arFont}`),
-    document.fonts.load('400 40px "Newsreader Variable"'),
-    document.fonts.load('24px "Geist Mono Variable"'),
-  ]).catch(() => {});
+  await Promise.all([document.fonts.load(`64px ${arFont}`), ...look.fonts.map((f) => document.fonts.load(f))]).catch(() => {});
   const c = document.createElement("canvas");
   c.width = W;
   c.height = H;
   const g = c.getContext("2d")!;
+  g.imageSmoothingEnabled = true;
+  g.imageSmoothingQuality = "high";
 
-  const glow = (x: number, y: number, r: number, col: string) => {
-    const rg = g.createRadialGradient(x, y, 0, x, y, r);
-    rg.addColorStop(0, col);
-    rg.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = rg;
-    g.fillRect(0, 0, W, H);
-  };
-  const art = o.surah ? await cardBackdrop(o.surah, W, H) : null;
-  if (art) {
-    // the surah card's art, blurred by scaling, under a veil dark enough for the text
-    const pal = themeOf(o.surah!).p;
-    g.imageSmoothingEnabled = true;
-    g.imageSmoothingQuality = "high";
-    g.drawImage(art, 0, 0, W, H);
-    const veil = g.createLinearGradient(0, 0, 0, H);
-    veil.addColorStop(0, "rgba(6,8,12,0.52)");
-    veil.addColorStop(0.5, "rgba(6,8,12,0.44)");
-    veil.addColorStop(1, "rgba(6,8,12,0.66)");
-    g.fillStyle = veil;
-    g.fillRect(0, 0, W, H);
-    glow(W * 0.82, H * 0.08, Math.max(W, H) * 0.6, hexA(pal[0], 0.22));
-    glow(W * 0.1, H * 0.95, Math.max(W, H) * 0.7, hexA(pal[1], 0.26));
-  } else {
-    // lapis night with two soft glows
-    const bg = g.createLinearGradient(0, 0, W * 0.5, H);
-    bg.addColorStop(0, "#15284a");
-    bg.addColorStop(1, "#070b14");
-    g.fillStyle = bg;
-    g.fillRect(0, 0, W, H);
-    glow(W * 0.82, H * 0.08, Math.max(W, H) * 0.6, "rgba(201,162,74,0.20)");
-    glow(W * 0.1, H * 0.95, Math.max(W, H) * 0.7, "rgba(62,107,115,0.32)");
-  }
-  g.fillStyle = g.createPattern(grain(), "repeat")!;
-  g.fillRect(0, 0, W, H);
-  const m = Math.round(Math.min(W, H) * 0.045);
-  g.strokeStyle = "rgba(239,233,221,0.16)";
-  g.lineWidth = 2;
-  g.strokeRect(m, m, W - 2 * m, H - 2 * m);
+  let art = look.art && o.surah ? await cardBackdrop(o.surah, W, H) : null;
+  if (art && look.art === "grey") art = grey(art);
+  const S = Math.min(W, H);
+  const k: Ctx = { W, H, S, m: Math.round(S * 0.045), fs: Math.round(S * 0.021), format, art, seed: o.surah ?? 0 };
+  const { top, bottom, padX } = look.paint(g, k);
+  g.globalAlpha = 1;
+  g.setLineDash([]);
+  g.shadowColor = "transparent";
+  spacing(g, 0);
 
   // fit the text into the space inside the frame: as large as it will go (a short ayah fills the
   // picture, whatever its shape), smaller only as far as it must, and centred in that space
-  const fs = Math.round(Math.min(W, H) * 0.021); // the reference at the foot
-  const top = m + Math.min(W, H) * 0.07;
-  const bottom = H - m - fs * 2.2 - fs * 2.4; // above the reference, with air between
   const avail = bottom - top;
-  const padX = W * (format === "landscape" ? 0.09 : 0.11);
   const aw = W - 2 * padX;
   // a landscape line of translation stays a comfortable length to read
   const tw = format === "landscape" ? Math.min(aw, W * 0.7) : aw;
-  let ar = Math.min(W, H) * (format === "landscape" ? 0.12 : format === "story" ? 0.095 : 0.09);
+  let ar = S * (format === "landscape" ? 0.12 : format === "story" ? 0.095 : 0.09);
   let tr = ar * 0.56;
   let arLines: string[] = [], trLines: string[] = [];
   const gap = () => ar * 0.9;
@@ -196,7 +698,7 @@ export async function renderAyahImage(o: ShareContent, format: ShareFormat): Pro
     g.direction = "rtl";
     arLines = wrap(g, o.arabic, aw);
     g.direction = "ltr";
-    g.font = `400 ${tr}px "Newsreader Variable"`;
+    g.font = look.trFont(tr);
     trLines = o.translation ? wrap(g, o.translation, tw) : [];
     if (height() <= avail || ar < 22) break;
     ar *= 0.95;
@@ -207,37 +709,32 @@ export async function renderAyahImage(o: ShareContent, format: ShareFormat): Pro
 
   g.textAlign = "center";
   g.textBaseline = "middle";
-  g.fillStyle = "#efe9dd";
+  g.fillStyle = look.ar;
   g.direction = "rtl";
   g.font = `${ar}px ${arFont}`;
-  for (const line of arLines) {
-    g.fillText(line, W / 2, y + ar * 0.975);
+  for (const l of arLines) {
+    g.fillText(l, W / 2, y + ar * 0.975);
     y += ar * 1.95;
   }
   if (trLines.length) {
     y += gap() / 2;
-    g.strokeStyle = "rgba(201,162,74,0.7)";
-    g.lineWidth = 2;
-    g.beginPath();
-    g.moveTo(W / 2 - 24, y);
-    g.lineTo(W / 2 + 24, y);
-    g.stroke();
+    look.rule(g, W / 2, y, k);
     y += gap() / 2;
     g.direction = "ltr";
-    g.fillStyle = "rgba(239,233,221,0.86)";
-    g.font = `400 ${tr}px "Newsreader Variable"`;
-    for (const line of trLines) {
-      g.fillText(line, W / 2, y + tr * 0.72);
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillStyle = look.tr;
+    g.font = look.trFont(tr);
+    for (const l of trLines) {
+      g.fillText(l, W / 2, y + tr * 0.72);
       y += tr * 1.45;
     }
   }
 
   // the reference only
   g.direction = "ltr";
-  g.fillStyle = "rgba(239,233,221,0.58)";
-  g.font = `${fs}px "Geist Mono Variable", monospace`;
-  if ("letterSpacing" in g) (g as unknown as { letterSpacing: string }).letterSpacing = `${Math.round(fs * 0.18)}px`;
-  g.fillText(`${o.surahName}  ·  ${o.ref}`.toUpperCase(), W / 2, H - m - fs * 2.2);
+  g.textBaseline = "middle";
+  look.reference(g, k, o.surahName, o.ref);
 
   return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("render failed"))), "image/jpeg", 0.95));
 }

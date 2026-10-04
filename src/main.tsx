@@ -9,7 +9,6 @@ import "@fontsource/reem-kufi/400.css";
 import "@fontsource/reem-kufi/600.css";
 import "@fontsource-variable/caveat";
 // the themes' own type: Monochrome, Atlas (headings, labels), Folio, Lunar
-import "@fontsource-variable/manrope";
 import "@fontsource-variable/bodoni-moda";
 import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
@@ -26,3 +25,23 @@ createRoot(document.getElementById("root")!).render(
     <App />
   </StrictMode>,
 );
+
+// a touch screen: the site's own selection and menus (index.css html.touch, lib/touch.ts)
+if (matchMedia("(pointer: coarse)").matches) document.documentElement.classList.add("touch");
+
+// Safari on iPhone zooms on a pinch whatever the page asks; its own gesture events can stop it
+for (const type of ["gesturestart", "gesturechange"]) document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+
+// kept on the device (dist/sw.js): the site opens at once and reads offline. Once the page has
+// settled, the rest of the Qur'an is fetched quietly too, unless the reader saves data.
+if ("serviceWorker" in navigator && import.meta.env.PROD) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker
+      .register("./sw.js")
+      .then(() => {
+        const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData;
+        if (!saveData) setTimeout(() => navigator.serviceWorker.ready.then((r) => r.active?.postMessage("keep-all")), 8000);
+      })
+      .catch(() => {});
+  });
+}

@@ -48,7 +48,7 @@ export function Intro({
   });
 
   return (
-    <div className="relative flex h-full flex-col text-[var(--box-fg)]">
+    <div className="cover-page relative flex h-full flex-col text-[var(--box-fg)]">
       {/* header, as on the reading page */}
       <motion.header
         className="relative z-10 flex h-12 shrink-0 items-center justify-end border-b border-[var(--box-line)] pl-5 pr-2 md:h-[52px] md:pl-7"
@@ -107,7 +107,7 @@ export function Intro({
 
       {/* footer, as on the reading page */}
       <motion.footer
-        className="relative z-10 flex h-8 shrink-0 items-center justify-center border-t border-[var(--box-line)] px-5 md:px-7"
+        className="frame-foot relative z-10 flex h-8 shrink-0 items-center justify-center border-t border-[var(--box-line)] px-5 md:px-7"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8, delay: 0.3 }}

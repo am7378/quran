@@ -292,7 +292,6 @@ export const AyahSection = memo(function AyahSection({
       <span className="pill border border-[var(--box-line)] px-1.5 py-[3px] tabular-nums text-[var(--box-muted)]">{key}</span>
       <span className="h-px flex-1 bg-[var(--box-line)]" />
       {fellBack && <span className="normal-case tracking-normal">Saheeh International · this page of Quraan Made Easy is damaged in the source</span>}
-      {tr.source === "qme" && <ContextToggle on={settings.showContext} onToggle={() => onAction("context", v)} />}
     </div>
   );
   // the multiple-ayah view: the number at the top of each ayah, no rule between ayah and translation
@@ -317,6 +316,7 @@ export const AyahSection = memo(function AyahSection({
   // and the number, the rule or gap between Arabic and English (the one-ayah view's full-height
   // minimum makes up the rest)
   hold = Math.round(hold + (one ? 60 : showAr && showTr ? 38 : 8));
+  if (!one) hold = Math.max(hold, showAr ? 188 : 168); // (the buttons' height, as the section's minimum)
 
   return (
     <section
@@ -329,7 +329,11 @@ export const AyahSection = memo(function AyahSection({
         "snap-item cv relative flex flex-col",
         one
           ? "min-h-full justify-center pl-[max(7%,34px)] pr-[max(7%,66px)] md:pl-[9%] md:pr-[max(9%,64px)]"
-          : "border-b border-[var(--box-line)] pb-9 pl-[max(6%,34px)] pr-[max(calc(6%+44px),66px)] pt-7 md:pl-[6%] md:pr-[calc(6%+44px)] md:pt-9",
+          : cn(
+              "border-b border-[var(--box-line)] pb-9 pl-[max(6%,34px)] pr-[max(calc(6%+44px),66px)] pt-7 md:pl-[6%] md:pr-[calc(6%+44px)] md:pt-9",
+              // never shorter than its column of buttons (five, 168px) with the column's insets
+              showAr ? "min-h-[252px] md:min-h-[260px]" : "min-h-[232px] md:min-h-[240px]",
+            ),
       )}
       style={{ paddingBlock: one ? (dense ? "3%" : "6%") : undefined, containIntrinsicSize: `auto ${hold}px` }}
       aria-label={`Ayah ${key}`}
@@ -494,7 +498,7 @@ export function ContextToggle({ on, onToggle }: { on: boolean; onToggle: () => v
     <button
       type="button"
       onClick={onToggle}
-      className="group inline-flex shrink-0 items-center gap-2 text-[var(--box-faint)] transition-colors hover:text-[var(--box-fg)]"
+      className="group inline-flex h-full min-h-8 shrink-0 items-center gap-2 px-2 text-[var(--box-faint)] transition-colors hover:text-[var(--box-fg)]"
       aria-pressed={on}
       aria-label={on ? "Hide the bracketed context" : "Show the bracketed context"}
       title={on ? "Hide the bracketed context" : "Show the bracketed context"}

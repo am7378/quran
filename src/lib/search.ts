@@ -182,7 +182,20 @@ function dl(a: string, b: string) {
   return d[m][n];
 }
 
-type Prepared = { surah: Surah; latin: string[]; words: string[][]; arabic: string };
+/** A name by its consonants: vowels gone and sound-alike letters merged, so spellings the way people
+ *  say them still meet ('kosar' and 'kawthar', 'rehman' and 'rahman', 'mariam' and 'maryam'). */
+function skeleton(norm: string) {
+  return norm
+    .replace(/th/g, "s")
+    .replace(/kh/g, "k")
+    .replace(/gh/g, "g")
+    .replace(/sh/g, "s")
+    .replace(/ph/g, "f")
+    .replace(/[aeiouyw]/g, "")
+    .replace(/(.)\1+/g, "$1");
+}
+
+type Prepared = { surah: Surah; latin: string[]; skel: string[]; words: string[][]; arabic: string };
 let prepared: Prepared[] | null = null;
 function prepare(surahs: Surah[]) {
   if (prepared) return prepared;
@@ -192,6 +205,7 @@ function prepare(surahs: Surah[]) {
     return {
       surah: s,
       latin: [...new Set(names.map(normLatin))],
+      skel: [...new Set(names.map((n) => skeleton(normLatin(n))))],
       words: english.map((e) => e.toLowerCase().replace(/^the\s+/, "").split(/[\s-]+/)),
       arabic: stripArticle(normArabic(s.ar)),
     };
@@ -221,6 +235,14 @@ function scoreSurah(p: Prepared, qRaw: string): number {
       const d = dl(q, name);
       const tol = q.length <= 4 ? 1 : q.length <= 8 ? 2 : 3;
       if (d <= tol) best = Math.max(best, 76 - d * 9);
+    }
+  }
+  // said the way it sounds: the same consonants, or one off for a longer name
+  const qs = skeleton(q);
+  if (qs.length >= 3) {
+    for (const sk of p.skel) {
+      if (qs === sk) best = Math.max(best, 72);
+      else if (qs.length >= 4 && sk.length >= 4 && dl(qs, sk) <= 1) best = Math.max(best, 58);
     }
   }
   // English meaning: every typed word must appear (prefix) in the meaning

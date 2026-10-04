@@ -28,7 +28,7 @@ export function Backdrop({ theme, still }: { theme: ThemeId; still?: boolean }) 
         </motion.div>
       </AnimatePresence>
       {/* keep the edges quiet so the frame reads first */}
-      <div className="absolute inset-0" style={{ background: "radial-gradient(130% 100% at 50% 50%, transparent 55%, rgba(0,0,0,0.35) 100%)" }} />
+      <div className="absolute inset-0" style={{ background: "radial-gradient(130% 100% at 50% 50%, transparent 55%, var(--edge-shade, rgba(0,0,0,0.35)) 100%)" }} />
     </div>
   );
 }

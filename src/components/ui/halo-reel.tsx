@@ -181,7 +181,9 @@ function ReelCard({
   const x = useTransform(theta, (t) => g.cx + g.rx * Math.cos(t) - g.cardW / 2);
   const y = useTransform(theta, (t) => g.cy + g.ry * Math.sin(t) - g.cardH / 2);
   const scale = useTransform(theta, (t) => g.minScale + (1 - g.minScale) * ((Math.cos(t) + 1) / 2));
-  const zIndex = useTransform(scale, (s) => Math.round(s * 1000));
+  // the nearer the front, the higher; changing only as cards pass one another (not every frame: a
+  // new stacking order each frame makes the browser re-sort the layers, which a phone feels)
+  const zIndex = useTransform(pos, (p) => 100 - Math.round(Math.abs(abs - p)));
   const opacity = useTransform(pos, (p) => {
     const d = Math.abs(abs - p);
     return d > visible - 1 ? Math.max(0, visible - d) : 1;

@@ -129,6 +129,34 @@ body,
   overflow: hidden;
   overscroll-behavior: none;
 }
+/* no zooming by a double tap (or a pinch: index.html, main.tsx): the frame is laid out for the
+   screen, and the text has its own sizes in Settings */
+html {
+  touch-action: manipulation;
+}
+/* on a touch screen the site selects words itself (a press held on the text, then drawn across:
+   Read.tsx), so the phone's own selection, its handles and its pop-up menus stay out of the way;
+   where people type, the phone's own editing is kept */
+html.touch body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+html.touch :is(input, textarea, [contenteditable="true"]) {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+/* on a phone the cards of page two keep only what reads at their size: their grain (blended over
+   each moving card) costs the ring its smoothness there */
+html.touch .surah-card .grain-local {
+  display: none;
+}
+/* the words being picked by a finger, before they become a highlight */
+.touch-pick {
+  background: rgba(246, 218, 96, 0.42);
+  border-radius: 2px;
+}
 body {
   background: var(--sky);
   color: var(--box-fg);
@@ -208,8 +236,8 @@ button {
   overscroll-behavior: contain;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
-  /* up and down (and zoom) are the phone's; a sideways swipe is the reader's, to turn the frame */
-  touch-action: pan-y pinch-zoom;
+  /* up and down are the phone's; a sideways swipe is the reader's, to turn the frame */
+  touch-action: pan-y;
 }
 .snap-scroller::-webkit-scrollbar {
   display: none;
@@ -477,144 +505,148 @@ mark.hl.fresh {
 }
 
 /* ══ Monochrome ══════════════════════════════════════════════════
-   The same site in black and white: a flat black box with soft round
-   corners and a hairline edge on a drifting grey sky, set in one clean
-   sans throughout (names, headings, translation, labels), quiet grey for
-   everything secondary, and white pills for what is pressed. Paper turns
-   the box white. Arabic keeps its scripts; colours stay only where the
-   reader put them (highlights). */
+   A technical sheet: a charcoal panel, square, on warm stone, the drawing of an instrument turning
+   slowly behind it (mono-sky.tsx). Cream type: a tight grotesk for names and headings, mono capitals
+   for labels; thin rules, dashed above the frame's foot; a checkerboard strip under the frame and
+   viewfinder marks on its opening and closing pages; a cream filled button beside outlined ones,
+   all square. "White" turns the panel to paper. Arabic keeps its scripts; colour stays only where
+   the reader put it (highlights). */
 :root[data-theme="mono"] {
-  --font-sans: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Manrope Variable", ui-sans-serif, system-ui, sans-serif;
-  --color-gold: #f4f4f4;
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+  --color-gold: #ece6dc;
   --color-gold-soft: #ffffff;
-  --box-bg: #050505;
-  --box-bg-solid: #050505;
-  --box-fg: #f2f2f2;
-  --box-muted: rgba(242, 242, 242, 0.62);
-  --box-faint: rgba(242, 242, 242, 0.4);
-  --box-line: rgba(242, 242, 242, 0.1);
-  --box-hover: rgba(242, 242, 242, 0.07);
-  --box-frame: rgba(255, 255, 255, 0.07);
-  --box-accent: #ffffff;
-  --box-context: rgba(242, 242, 242, 0.5);
-  --panel-bg: #0b0b0b;
-  --tip-bg: #f2f2f2;
-  --tip-fg: #050505;
-  --box-radius: 24px;
+  --box-bg: #161616;
+  --box-bg-solid: #161616;
+  --box-fg: #ece6dc;
+  --box-muted: rgba(236, 230, 220, 0.64);
+  --box-faint: rgba(236, 230, 220, 0.42);
+  --box-line: rgba(236, 230, 220, 0.16);
+  --box-hover: rgba(236, 230, 220, 0.07);
+  --box-frame: #161616;
+  --box-accent: #ece6dc;
+  --box-context: rgba(236, 230, 220, 0.52);
+  --panel-bg: #1c1c1c;
+  --tip-bg: #ece6dc;
+  --tip-fg: #161616;
+  --box-radius: 0px;
   --box-border: 1px;
-  --box-shadow: 0 60px 140px -40px rgba(0, 0, 0, 0.85), 0 24px 50px -24px rgba(0, 0, 0, 0.6);
-  --pop-radius: 14px;
-  --sky: #161616;
+  --box-shadow: 0 40px 90px -40px rgba(0, 0, 0, 0.45), 0 14px 30px -18px rgba(0, 0, 0, 0.35);
+  --pop-radius: 0px;
+  --sky: #e6e2dc;
   --voice-paper: linear-gradient(160deg, #efefed 0%, #e0e0de 60%, #d4d4d2 100%);
+  --outside-fg: #161616;
+  --outside-muted: rgba(22, 22, 22, 0.66);
+  --outside-faint: rgba(22, 22, 22, 0.46);
+  --outside-line: rgba(22, 22, 22, 0.22);
+  --outside-tab: rgba(22, 22, 22, 0.42);
+  --outside-bg: #e6e2dc;
+  --edge-shade: rgba(60, 50, 40, 0.1);
 }
 :root[data-theme="mono"][data-box="paper"] {
-  --box-bg: #f5f5f3;
-  --box-bg-solid: #f5f5f3;
-  --box-fg: #0b0b0b;
-  --box-muted: rgba(11, 11, 11, 0.6);
-  --box-faint: rgba(11, 11, 11, 0.38);
-  --box-line: rgba(11, 11, 11, 0.1);
-  --box-hover: rgba(11, 11, 11, 0.05);
-  --box-frame: rgba(0, 0, 0, 0.06);
-  --box-accent: #0b0b0b;
-  --box-context: rgba(11, 11, 11, 0.5);
-  --panel-bg: #ededeb;
-  --tip-bg: #0b0b0b;
-  --tip-fg: #f5f5f3;
-  --color-gold: #8c8c8c;
+  --box-bg: #f3f0ea;
+  --box-bg-solid: #f3f0ea;
+  --box-fg: #161616;
+  --box-muted: rgba(22, 22, 22, 0.62);
+  --box-faint: rgba(22, 22, 22, 0.42);
+  --box-line: rgba(22, 22, 22, 0.16);
+  --box-hover: rgba(22, 22, 22, 0.05);
+  --box-frame: #161616;
+  --box-accent: #161616;
+  --box-context: rgba(22, 22, 22, 0.5);
+  --panel-bg: #ece8e1;
+  --tip-bg: #161616;
+  --tip-fg: #f3f0ea;
+  --color-gold: #161616;
 }
-/* one sans, set upright; labels in sentence case, not small capitals */
+/* one sans, set upright: names and headings tight, the way a sheet's headline is */
 :root[data-theme="mono"] .italic,
 :root[data-theme="mono"] .ctx {
   font-style: normal;
 }
-:root[data-theme="mono"] .font-serif {
-  letter-spacing: -0.012em;
+:root[data-theme="mono"] .display {
+  font-family: var(--font-sans);
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  line-height: 1.04;
 }
+:root[data-theme="mono"] .font-serif {
+  letter-spacing: -0.01em;
+}
+/* labels in mono capitals, as a technical drawing is lettered */
 :root[data-theme="mono"] .label {
-  font-size: 12px;
-  line-height: 1.3;
-  letter-spacing: -0.003em;
-  text-transform: none;
+  font-size: 10.5px;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
 }
 :root[data-theme="mono"] .label-sm {
-  font-size: 11px;
-  letter-spacing: 0;
-  text-transform: none;
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 :root[data-theme="mono"] .grain-local {
   display: none;
 }
 :root[data-theme="mono"] .grain {
-  opacity: 0.05;
+  opacity: 0.04;
 }
 :root[data-theme="mono"] ::selection {
-  background: rgba(255, 255, 255, 0.28);
+  background: rgba(236, 230, 220, 0.28);
 }
 :root[data-theme="mono"][data-box="paper"] ::selection {
-  background: rgba(0, 0, 0, 0.16);
+  background: rgba(0, 0, 0, 0.14);
 }
-/* what is pressed: pills */
+/* the main button filled cream, the others outlined: square, side by side */
 :root[data-theme="mono"] .btn-primary {
-  border-radius: 999px;
-  border-color: transparent;
+  border-radius: 0;
+  border: 1px solid var(--box-fg);
   background: var(--box-fg);
   color: var(--box-bg-solid);
-  padding-inline: 1.25rem;
-  transition: opacity 0.2s ease, transform 0.2s ease;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 :root[data-theme="mono"] .btn-primary:hover {
-  background: var(--box-fg);
-  color: var(--box-bg-solid);
-  opacity: 0.86;
+  background: transparent;
+  color: var(--box-fg);
 }
 :root[data-theme="mono"] .btn-primary:active {
-  transform: scale(0.97);
+  transform: translateY(1px);
 }
 :root[data-theme="mono"] .btn-secondary {
-  border-radius: 999px;
+  border-radius: 0;
+  border-color: var(--box-line);
 }
 :root[data-theme="mono"] .btn-fill {
-  border-radius: 999px;
-  scale: 1;
-  opacity: 0;
-  transition: opacity 0.25s ease;
-}
-:root[data-theme="mono"] .group:hover > .btn-fill,
-:root[data-theme="mono"] .btn-fill.is-active {
-  opacity: 1;
+  border-radius: 0;
 }
 :root[data-theme="mono"] .search-input {
-  border-radius: 999px;
+  border-radius: 0;
   border: 1px solid var(--box-line);
-  background: var(--box-hover);
-  padding-inline: 18px;
-  font-family: var(--font-sans);
-  font-size: 13px;
-  letter-spacing: 0;
-  text-transform: none;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 :root[data-theme="mono"] .search-input:focus {
-  border: 1px solid var(--box-faint);
+  border: 1px solid var(--box-fg);
   box-shadow: none;
 }
-/* menus, tips, dialogs: rounded like the box */
+/* menus, tips, dialogs: square sheets with a hairline */
 :root[data-theme="mono"] .theme-pop {
-  border-radius: var(--pop-radius);
+  border-radius: 0;
 }
 :root[data-theme="mono"] .theme-dialog {
-  border-radius: 24px;
+  border-radius: 0;
   border-width: 1px;
-  border-color: rgba(255, 255, 255, 0.08);
+  border-color: rgba(236, 230, 220, 0.14);
 }
-/* the surahs' art in black and white; the cards rounded */
+/* the surahs' art in black and white; the cards square */
 :root[data-theme="mono"] .surah-art {
-  filter: grayscale(1) contrast(1.06) brightness(0.92);
+  filter: grayscale(1) contrast(1.08) brightness(0.9);
 }
 :root[data-theme="mono"] .surah-card {
-  border-radius: 16px;
+  border-radius: 0;
 }
 /* notes on plain grey paper */
 :root[data-theme="mono"] .note-paper {
@@ -627,14 +659,65 @@ mark.hl.fresh {
 :root[data-theme="mono"] .note-paper::after {
   background: linear-gradient(135deg, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, 0.14) 50%, #e2e2df 56%, #fbfbfa 100%);
 }
-
-/* switches, segmented choices and icon buttons: rounded through */
-:root[data-theme="mono"] .pill {
-  border-radius: 999px;
-}
+/* switches, segmented choices and icon buttons: square through */
+:root[data-theme="mono"] .pill,
 :root[data-theme="mono"] .pill > .pill,
 :root[data-theme="mono"] .pill .pill {
-  border-radius: 999px;
+  border-radius: 0;
+}
+/* the rule above the frame's foot dashed, as on the sheet */
+:root[data-theme="mono"] .frame-foot {
+  border-top-style: dashed;
+}
+/* a checkerboard strip along the foot of the frame, outside it */
+:root[data-theme="mono"] .frame-box::after {
+  content: "";
+  position: absolute;
+  left: -1px;
+  right: -1px;
+  top: calc(100% + 1px);
+  height: 8px;
+  background: repeating-conic-gradient(#161616 0 25%, transparent 0 50%) 0 0 / 8px 8px;
+  pointer-events: none;
+}
+/* viewfinder marks in the corners of the opening and closing pages and the cover */
+:root[data-theme="mono"] .snap-page::before,
+:root[data-theme="mono"] .cover-page::before {
+  content: "";
+  position: absolute;
+  inset: 22px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--box-faint), var(--box-faint)) top left / 22px 1px,
+    linear-gradient(var(--box-faint), var(--box-faint)) top left / 1px 22px,
+    linear-gradient(var(--box-faint), var(--box-faint)) top right / 22px 1px,
+    linear-gradient(var(--box-faint), var(--box-faint)) top right / 1px 22px,
+    linear-gradient(var(--box-faint), var(--box-faint)) bottom left / 22px 1px,
+    linear-gradient(var(--box-faint), var(--box-faint)) bottom left / 1px 22px,
+    linear-gradient(var(--box-faint), var(--box-faint)) bottom right / 22px 1px,
+    linear-gradient(var(--box-faint), var(--box-faint)) bottom right / 1px 22px;
+  background-repeat: no-repeat;
+}
+:root[data-theme="mono"] .cover-page::before {
+  inset: 64px 22px 44px;
+}
+/* the bezel of the sky's drawing, turning (mono-sky.tsx) */
+.mono-turn {
+  animation: mono-turn 240s linear infinite;
+  will-change: transform;
+}
+@keyframes mono-turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+:root[data-motion="reduce"] .mono-turn {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mono-turn {
+    animation: none !important;
+  }
 }
 
 /* the sajdah sign ۩ after the word of prostration, in the mushaf's own glyph */
@@ -859,7 +942,9 @@ mark.hl.fresh {
 
 /* each theme draws its icons a little its own way: the weight of the line, its ends and corners */
 :root[data-theme="mono"] svg.lucide {
-  stroke-width: 2.1px;
+  stroke-width: 1.4px;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
 }
 :root[data-theme="atlas"] svg.lucide {
   stroke-width: 1.3px;
@@ -1080,7 +1165,7 @@ mark.hl.fresh {
   --panel-bg: #0b1522;
   --tip-bg: #e6edf5;
   --tip-fg: #0b1522;
-  --box-radius: 18px;
+  --box-radius: 32px;
   --box-border: 5px;
   --box-shadow: 0 60px 140px -40px rgba(0, 0, 0, 0.85), inset 0 0 0 1px rgba(255, 255, 255, 0.05);
   --pop-radius: 10px;
@@ -1125,6 +1210,23 @@ mark.hl.fresh {
 :root[data-theme="lunar"] .pill,
 :root[data-theme="lunar"] .pill .pill {
   border-radius: 999px;
+}
+/* the view switch in the frame's top corner, concentric with it (as a phone's own corners are):
+   its radius is the frame's, less the distance between their edges (10px; 12px on a wider
+   screen); its chosen segment's, less 3px more */
+:root[data-theme="lunar"] .view-switch {
+  border-radius: calc(var(--box-radius) - 10px);
+}
+:root[data-theme="lunar"] .view-switch .pill {
+  border-radius: calc(var(--box-radius) - 13px);
+}
+@media (min-width: 768px) {
+  :root[data-theme="lunar"] .view-switch {
+    border-radius: calc(var(--box-radius) - 12px);
+  }
+  :root[data-theme="lunar"] .view-switch .pill {
+    border-radius: calc(var(--box-radius) - 15px);
+  }
 }
 :root[data-theme="lunar"] .theme-pop {
   border-radius: var(--pop-radius);

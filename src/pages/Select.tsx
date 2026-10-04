@@ -190,8 +190,8 @@ export function Select({
       transition={{ duration: 0.6, delay: 0.1 }}
       onContextMenu={onContextMenu}
     >
-      {/* top row */}
-      <div className="absolute inset-x-0 top-0 z-20 flex items-start justify-between px-5 pt-4 md:px-7 md:pt-5">
+      {/* top row (above the search and the ring: its index menu opens over them) */}
+      <div className="absolute inset-x-0 top-0 z-40 flex items-start justify-between px-5 pt-4 md:px-7 md:pt-5">
         <div className="relative">
           <ViewPicker view={view} onChange={setView} />
           <div className="label mt-1 text-[var(--box-faint)]">{ring ? `[${pad3(front + 1)} / 114]` : INDEX_VIEWS.find((v) => v.id === view)?.line}</div>

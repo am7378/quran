@@ -14,7 +14,7 @@ import { loadIndex, type Surah } from "@/lib/data";
 import { frameRect, useViewport } from "@/lib/layout";
 import { useStore } from "@/lib/store";
 import { useUI } from "@/lib/ui";
-import { isLongPressMenu, watchTwoFingerTap } from "@/lib/touch";
+import { isLongPressMenu, watchLongPress, watchTwoFingerTap } from "@/lib/touch";
 
 type Start = { surah: number; ayah: number; from?: OpenRequest["from"]; showOpener?: boolean };
 
@@ -51,7 +51,10 @@ export default function App() {
   // the site's own right-click menu; pages add their own items first (and prevent this fallback)
   useEffect(() => {
     const on = (e: MouseEvent) => {
-      if (e.defaultPrevented || isLongPressMenu(e) || (e.target as HTMLElement).closest("input, textarea")) return;
+      if ((e.target as HTMLElement).closest("input, textarea")) return; // where people type, the browser's own
+      // the browser's menu from a long press stays away: the site raises its own (watchLongPress)
+      if (isLongPressMenu(e)) return e.preventDefault();
+      if (e.defaultPrevented) return;
       e.preventDefault();
       const enter = document.querySelector<HTMLButtonElement>('button[aria-label="Read the Qur\'an"]');
       useUI.getState().openMenu(e.clientX, e.clientY, [
@@ -60,10 +63,13 @@ export default function App() {
       ]);
     };
     window.addEventListener("contextmenu", on);
-    const stopTaps = watchTwoFingerTap(); // touch screens: two fingers at once bring the menu
+    // touch screens: two fingers at once, or a press held where there is no text to select
+    const stopTaps = watchTwoFingerTap();
+    const stopPress = watchLongPress();
     return () => {
       window.removeEventListener("contextmenu", on);
       stopTaps();
+      stopPress();
     };
   }, []);
 

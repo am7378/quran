@@ -25,7 +25,7 @@ export function ImmersivePanel({
 }) {
   const hidden = from === "left" ? "inset(0 100% 0 0)" : "inset(0 0 0 100%)";
   const gone = from === "left" ? "inset(0 0 0 100%)" : "inset(0 100% 0 0)";
-  // Monochrome opens a panel as a sheet settling into place; Classic wipes it across
+  // Monochrome draws a panel down the frame like a scan; Classic wipes it across
   const theme = useStore((s) => s.settings.theme);
   const mono = theme === "mono";
   // Atlas slides a dark sheet across the bone box, the way its two halves meet
@@ -62,10 +62,10 @@ export function ImmersivePanel({
       }
     : mono
     ? {
-        initial: { opacity: 0, scale: 0.985, y: 14 },
-        animate: { opacity: 1, scale: 1, y: 0 },
-        exit: { opacity: 0, scale: 0.99, y: 8, transition: { duration: 0.28, ease: EASE_OUT } },
-        transition: { duration: 0.5, ease: EASE_OUT },
+        initial: { clipPath: "inset(0 0 100% 0)" },
+        animate: { clipPath: "inset(0 0 0% 0)" },
+        exit: { clipPath: "inset(100% 0 0% 0)", transition: { duration: 0.4, ease: EASE_IN_OUT } },
+        transition: { duration: 0.55, ease: EASE_IN_OUT },
       }
     : {
         initial: { clipPath: hidden },
