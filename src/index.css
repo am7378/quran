@@ -246,6 +246,18 @@ button {
   scroll-snap-align: start;
   scroll-snap-stop: always;
 }
+/* the foot of an ayah: a long one (taller than the frame) is read down to its end, and the scrolling
+   stops there before the next ayah; for one that fits it is the same place as its top */
+.ayah-end-stop {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  pointer-events: none;
+  scroll-snap-align: end;
+  scroll-snap-stop: always;
+}
 /* an ayah far from the frame is not laid out; it holds its place at about its height (Ayah.tsx) */
 .cv {
   content-visibility: auto;
@@ -350,6 +362,14 @@ mark.hl.fresh {
   font-family: "IndoPak", var(--font-quran);
   word-spacing: 0.06em;
 }
+/* Arabic spacing: Close (Settings → Reading) sets the words nearer, as a printed mushaf (the lines
+   are drawn closer where each text sets its line height: Ayah.tsx, Book.tsx) */
+:root[data-arabic="close"] .quran {
+  word-spacing: -0.09em;
+}
+:root[data-arabic="close"] .quran.indopak {
+  word-spacing: -0.03em;
+}
 
 /* terms of the translation explained by its glossary */
 .gl {
@@ -419,6 +439,26 @@ mark.hl.fresh {
 .saw:hover,
 .hon:hover {
   color: var(--box-accent);
+}
+/* in a meaning, what it sends the reader on to ("See Rasool", "see verses 92-99 of Surah 18") */
+.gloss-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 50%, transparent);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+.gloss-link:hover,
+.gloss-link:focus-visible {
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 1.5px;
 }
 
 /* the three-ayah view regroups its pages without gliding heights */
@@ -509,8 +549,9 @@ mark.hl.fresh {
    slowly behind it (mono-sky.tsx). Cream type: a tight grotesk for names and headings, mono capitals
    for labels; thin rules, dashed above the frame's foot; a checkerboard strip under the frame and
    viewfinder marks on its opening and closing pages; a cream filled button beside outlined ones,
-   all square. "White" turns the panel to paper. Arabic keeps its scripts; colour stays only where
-   the reader put it (highlights). */
+   all square. Two choices of its own (Settings → Display): the frame light (paper) or dark, the page
+   around it dark (by default) or light stone. Arabic keeps its scripts; colour stays only where the
+   reader put it (highlights). */
 :root[data-theme="mono"] {
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-serif: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
@@ -543,6 +584,11 @@ mark.hl.fresh {
   --outside-tab: rgba(22, 22, 22, 0.42);
   --outside-bg: #e6e2dc;
   --edge-shade: rgba(60, 50, 40, 0.1);
+  /* the drawing behind (mono-sky.tsx): its ink and its ground */
+  --mono-ink: #161616;
+  --mono-sky-a: #ebe7e1;
+  --mono-sky-b: #e6e2dc;
+  --mono-sky-c: #dcd7cf;
 }
 :root[data-theme="mono"][data-box="paper"] {
   --box-bg: #f3f0ea;
@@ -559,6 +605,26 @@ mark.hl.fresh {
   --tip-bg: #161616;
   --tip-fg: #f3f0ea;
   --color-gold: #161616;
+}
+/* the page around the frame dark: the drawing in cream on near-black */
+:root[data-theme="mono"][data-sky="dark"] {
+  --sky: #121212;
+  --mono-ink: #ece6dc;
+  --mono-sky-a: #1c1c1b;
+  --mono-sky-b: #141414;
+  --mono-sky-c: #0b0b0b;
+  --outside-fg: #ece6dc;
+  --outside-muted: rgba(236, 230, 220, 0.66);
+  --outside-faint: rgba(236, 230, 220, 0.46);
+  --outside-line: rgba(236, 230, 220, 0.2);
+  --outside-tab: rgba(236, 230, 220, 0.4);
+  --outside-bg: #121212;
+  --edge-shade: rgba(0, 0, 0, 0.4);
+  --box-shadow: 0 50px 110px -40px rgba(0, 0, 0, 0.9), 0 18px 36px -18px rgba(0, 0, 0, 0.65);
+  --box-frame: rgba(236, 230, 220, 0.22); /* a dark frame on the dark page keeps a hairline edge */
+}
+:root[data-theme="mono"][data-sky="dark"][data-box="paper"] {
+  --box-frame: #f3f0ea;
 }
 /* one sans, set upright: names and headings tight, the way a sheet's headline is */
 :root[data-theme="mono"] .italic,
@@ -677,7 +743,7 @@ mark.hl.fresh {
   right: -1px;
   top: calc(100% + 1px);
   height: 8px;
-  background: repeating-conic-gradient(#161616 0 25%, transparent 0 50%) 0 0 / 8px 8px;
+  background: repeating-conic-gradient(var(--mono-ink) 0 25%, transparent 0 50%) 0 0 / 8px 8px;
   pointer-events: none;
 }
 /* viewfinder marks in the corners of the opening and closing pages and the cover */
@@ -1262,4 +1328,23 @@ mark.hl.fresh {
 :root[data-theme="lunar"] .display.tabular-nums,
 :root[data-theme="folio"] .display.tabular-nums {
   letter-spacing: 0.02em;
+}
+
+/* ── opened from the home screen (html.standalone): the page runs under the status bar, whose
+   letters are white; over a light sky a soft shade behind them keeps the time and battery legible ── */
+html.standalone body::after {
+  content: "";
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: env(safe-area-inset-top);
+  background: var(--status-scrim, none);
+  pointer-events: none;
+  z-index: 2147483000;
+}
+:root[data-theme="folio"],
+:root[data-theme="paper"],
+:root[data-theme="mono"][data-sky="light"] {
+  --status-scrim: linear-gradient(to bottom, rgba(0, 0, 0, 0.36), rgba(0, 0, 0, 0.1));
 }

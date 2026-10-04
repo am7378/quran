@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { animate, AnimatePresence, motion, useMotionValue, useMotionValueEvent, useSpring, useTransform } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { sfx } from "@/lib/sound";
 
 /**
  * Ayah slider, adapted from the provided slider. The thumb follows the
@@ -81,12 +82,24 @@ export function AyahSlider({ value, min = 1, max, onChange, onCommit, onEnd, end
 
   const local = (clientX: number) => clientX - trackRef.current!.getBoundingClientRect().left - THUMB / 2;
 
+  // heard as it moves: a fine click for each ayah passed, a firmer one at either end
+  const heard = useRef(value);
+  const click = (v: number) => {
+    if (v === heard.current) return;
+    heard.current = v;
+    sfx(v === min || v === max ? "detentEnd" : "detent", (v - min) / span);
+  };
+  useEffect(() => {
+    if (!dragging.current) heard.current = value; // (moved by the page: silent)
+  }, [value]);
+
   const move = (clientX: number) => {
     const end = usable();
     const lx = local(clientX);
     const px = Math.max(0, Math.min(end, lx));
     x.set(px); // continuous: no stepping between ayahs while dragging
     const v = toVal(px);
+    click(v);
     if (v !== value) onChange(v);
   };
 
@@ -95,6 +108,7 @@ export function AyahSlider({ value, min = 1, max, onChange, onCommit, onEnd, end
     e.preventDefault();
     e.stopPropagation();
     dragging.current = true;
+    heard.current = value;
     setPressed(true);
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     move(e.clientX);
@@ -112,6 +126,7 @@ export function AyahSlider({ value, min = 1, max, onChange, onCommit, onEnd, end
     dragging.current = false;
     setPressed(false);
     animate(x, toPx(value), springs.settle); // settle onto the chosen ayah
+    sfx("settle");
     onCommit?.(value);
   };
 
@@ -123,6 +138,7 @@ export function AyahSlider({ value, min = 1, max, onChange, onCommit, onEnd, end
     if (e.key === "End") v = max;
     if (v !== null) {
       e.preventDefault();
+      click(v);
       onChange(v);
       onCommit?.(v);
     }

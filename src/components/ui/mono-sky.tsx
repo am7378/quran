@@ -1,13 +1,13 @@
 /**
- * The Monochrome theme's sky: warm stone, ruled like a technical sheet, the drawing of an instrument
- * laid over it in fine ink: rulers along the screen's edges, a viewfinder in its corners, the axes
- * through its middle, a ring and a bezel of ticks around the frame, a crosshair above it and an eye
- * beside it. Only the bezel moves, turning very slowly (held when still, and when motion is reduced).
+ * The Monochrome theme's sky: near-black (or warm stone), ruled like a technical sheet, the drawing
+ * of an instrument laid over it in fine ink: rulers along the screen's edges, a viewfinder in its
+ * corners, the axes through its middle, a ring and a bezel of ticks around the frame, a crosshair
+ * above it and a leader beside it. Its ink and ground are the theme's (index.css --mono-*). Only the bezel moves, turning very slowly (held when still, and when motion is reduced).
  * Drawn in the screen's own pixels so every line stays a hairline at any size.
  */
 import { useEffect, useRef, useState } from "react"
 
-const INK = "#161616"
+const INK = "currentColor" // var(--mono-ink), set on the drawing's box
 
 export function MonoSky({ className, still }: { className?: string; still?: boolean }) {
   const ref = useRef<HTMLDivElement>(null)
@@ -54,7 +54,7 @@ export function MonoSky({ className, still }: { className?: string; still?: bool
   const fade = "linear-gradient(to bottom, #000 0%, #000 81%, transparent 84%, transparent 100%)"
 
   return (
-    <div ref={ref} className={className} style={{ background: "radial-gradient(120% 90% at 50% 45%, #ebe7e1 0%, #e6e2dc 55%, #dcd7cf 100%)" }}>
+    <div ref={ref} className={className} style={{ color: "var(--mono-ink)", background: "radial-gradient(120% 90% at 50% 45%, var(--mono-sky-a) 0%, var(--mono-sky-b) 55%, var(--mono-sky-c) 100%)" }}>
       <svg className="absolute inset-0 h-full w-full" width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" stroke={INK} strokeWidth={1} shapeRendering="geometricPrecision">
         <path d={ticks} strokeOpacity={0.26} shapeRendering="crispEdges" />
         <path d={corners} strokeOpacity={0.5} strokeWidth={1.2} />
@@ -73,14 +73,7 @@ export function MonoSky({ className, still }: { className?: string; still?: bool
         </g>
         {wide && (
           <>
-            {/* the eye, on the axis beside the frame */}
-            <g transform={`translate(${w * 0.062} ${cy - 64})`} strokeOpacity={0.55}>
-              <ellipse rx={44} ry={17} />
-              <ellipse rx={30} ry={17} />
-              <circle r={13} fill={INK} fillOpacity={0.78} stroke="none" />
-              <circle r={3.2} fill="#e6e2dc" stroke="none" />
-            </g>
-            {/* and on the other side, a leader with its arrow pointing in */}
+            {/* beside the frame, a leader with its arrow pointing in */}
             <g strokeOpacity={0.45}>
               <path d={`M${w * 0.905} ${cy - 64}H${w * 0.955}V${cy - 20}`} />
               <path d={`M${w * 0.905} ${cy - 64}l8 -4.5v9z`} fill={INK} fillOpacity={0.5} stroke="none" />

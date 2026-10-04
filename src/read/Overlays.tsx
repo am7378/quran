@@ -6,8 +6,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { HIGHLIGHT_COLORS, HIGHLIGHT_HEX, useStore, type Highlight, type HighlightColor, type Note } from "@/lib/store";
 import { EASE_OUT, cn } from "@/lib/utils";
 import { useUI } from "@/lib/ui";
-import { glossNodes } from "./glossText";
+import { glossNodes, type GlossLinks } from "./glossText";
+import { glossByTerm } from "./terms";
 import { peekHover, refsIn } from "./Peek";
+import { sfx } from "@/lib/sound";
 
 /* ── word meaning tooltip ─────────────────────────────────────── */
 
@@ -25,8 +27,51 @@ export type Tip = {
   gloss?: { term: string; text: string; saw?: boolean };
 };
 
-export function WordTip({ tip, translit }: { tip: Tip | null; translit: boolean }) {
-  return <AnimatePresence>{tip && <TipBox key={tip.ref} tip={tip} translit={translit} />}</AnimatePresence>;
+/**
+ * Pointing away from a term, or from its meaning, closes the meaning a moment later, so the pointer
+ * can travel from the word into the box (to follow a "see …" in it) without it going.
+ */
+let tipCloseTimer = 0;
+export const tipHover = {
+  leave(close: () => void) {
+    window.clearTimeout(tipCloseTimer);
+    tipCloseTimer = window.setTimeout(close, 260);
+  },
+  stay() {
+    window.clearTimeout(tipCloseTimer);
+  },
+};
+
+let seeTimer = 0;
+
+export function WordTip({ tip, translit, onClose }: { tip: Tip | null; translit: boolean; onClose: () => void }) {
+  // a term a meaning sends the reader to ("See Rasool"): its own meaning, beside the link
+  const [sub, setSub] = useState<Tip | null>(null);
+  useEffect(() => setSub(null), [tip?.ref]);
+  const links: GlossLinks = {
+    onSee: (term, el, hover) => {
+      window.clearTimeout(seeTimer);
+      const show = () => {
+        const g = glossByTerm(term);
+        if (!g || !el.isConnected) return;
+        const r = el.getBoundingClientRect();
+        setSub({ x: r.left, y: r.top, w: r.width, h: r.height, ref: `see:${g.term}:${Math.round(r.left)}:${Math.round(r.top)}`, gloss: g });
+      };
+      if (hover) seeTimer = window.setTimeout(show, 280);
+      else show();
+    },
+    onRef: (rf, el) => {
+      const r = el.getBoundingClientRect();
+      useUI.getState().setPeek({ s: rf.s, a: rf.a, to: rf.to, x: r.left, y: r.top, w: r.width, h: r.height, pinned: true });
+    },
+    onHoverEnd: () => window.clearTimeout(seeTimer),
+  };
+  return (
+    <>
+      <AnimatePresence>{tip && <TipBox key={tip.ref} tip={tip} translit={translit} links={links} onClose={onClose} />}</AnimatePresence>
+      <AnimatePresence>{tip && sub && <TipBox key={sub.ref} tip={sub} translit={translit} links={links} onClose={() => setSub(null)} nested />}</AnimatePresence>
+    </>
+  );
 }
 
 type TipSide = "above" | "below" | "left" | "right";
@@ -37,8 +82,19 @@ const TIP_EDGE = 8; // the nearest the box comes to the screen's edge
  * A word's meaning, placed where it fits: above the word, else below it, else beside it; slid
  * along so it stays whole on the screen, its pointer moving along the box's edge to stay on the word.
  */
-function TipBox({ tip, translit }: { tip: Tip; translit: boolean }) {
+function TipBox({ tip, translit, links, onClose, nested }: { tip: Tip; translit: boolean; links: GlossLinks; onClose: () => void; nested?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
+  // a tap anywhere but on a meaning, a word or a term closes it (the one tapped opens its own)
+  useEffect(() => {
+    const down = (e: PointerEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t?.closest?.("[data-tip], .word, .gl, .saw, .hon, [role=dialog]")) return;
+      onClose();
+    };
+    window.addEventListener("pointerdown", down, true);
+    return () => window.removeEventListener("pointerdown", down, true);
+  }, [onClose]);
+  const interactive = !!tip.gloss && !tip.gloss.saw; // a meaning with words to follow
   const [at, setAt] = useState<{ left: number; top: number; side: TipSide; point: number } | null>(null);
   useLayoutEffect(() => {
     const el = ref.current;
@@ -83,7 +139,10 @@ function TipBox({ tip, translit }: { tip: Tip; translit: boolean }) {
   return (
     <motion.div
       ref={ref}
-      className="pointer-events-none fixed z-[70]"
+      data-tip
+      className={cn("fixed", nested ? "z-[72]" : "z-[70]", interactive ? "pointer-events-auto" : "pointer-events-none")}
+      onPointerEnter={(e) => e.pointerType === "mouse" && tipHover.stay()}
+      onPointerLeave={(e) => e.pointerType === "mouse" && tipHover.leave(onClose)}
       // measured once where it cannot be seen, then put where it fits
       style={at ? { left: at.left, top: at.top } : { left: 0, top: 0, visibility: "hidden" }}
       initial={{ opacity: 0, ...from }}
@@ -100,7 +159,7 @@ function TipBox({ tip, translit }: { tip: Tip; translit: boolean }) {
             )}
           >
             {!tip.gloss.saw && <div className="font-serif text-[16px] italic leading-snug">{tip.gloss.term}</div>}
-            <div className={cn("font-serif leading-snug", tip.gloss.saw ? "text-[15px]" : "mt-1 text-[14px] opacity-90")}>{tip.gloss.saw ? tip.gloss.text : glossNodes(tip.gloss.text, tip.gloss.term)}</div>
+            <div className={cn("font-serif leading-snug", tip.gloss.saw ? "text-[15px]" : "mt-1 text-[14px] opacity-90")}>{tip.gloss.saw ? tip.gloss.text : glossNodes(tip.gloss.text, tip.gloss.term, links)}</div>
             {!tip.gloss.saw && <div className="label-sm mt-2 opacity-45">Glossary · Quraan Made Easy</div>}
           </div>
         ) : (
@@ -342,6 +401,7 @@ function NoteCard({ note, autoFocus, onFocused }: { note: Note; autoFocus: boole
     if (!moved.current) {
       moved.current = true;
       setDrag(true);
+      sfx("lift"); // the paper picked up
     }
     L.set(g.l + ox);
     T.set(g.t + oy);
@@ -374,6 +434,7 @@ function NoteCard({ note, autoFocus, onFocused }: { note: Note; autoFocus: boole
 
   const onDragEnd = (g: { l: number; t: number }) => {
     setDrag(false);
+    sfx("drop"); // and laid down
     const vw = window.innerWidth, vh = window.innerHeight;
     const left = L.get(), top = T.get();
     if (note.docked) {

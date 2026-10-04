@@ -63,7 +63,19 @@ export type Settings = {
   book: boolean; // Arabic only or a translation only, in the multiple-ayah view: the ayahs run on like a book
   bookThemes: boolean; // the translation read as a book: its paragraphs headed by their themes
   script: "uthmani" | "indopak"; // the Arabic: Madani (KFGQPC Hafs) or Indo-Pak
+  arabicSpacing: "airy" | "close"; // the Arabic's words and lines: as set out on a screen, or closer, as a printed mushaf
+  // the site's sounds (lib/sound.ts): all of them, and each kind on its own
+  sound: boolean;
   sounds: boolean; // the marker's sound when highlighting
+  soundTaps: boolean; // buttons, switches, menus
+  soundTyping: boolean; // keys, writing a note or a reflection
+  soundNotes: boolean; // a note picked up and put down
+  soundRecord: boolean; // a recording starting and stopping
+  soundComplete: boolean; // a surah marked as completed
+  soundSlider: boolean; // the ayah slider's fine click for each ayah
+  // Monochrome's own two choices: the page around the frame, and the frame itself
+  monoSky: "dark" | "light";
+  monoCard: "dark" | "light";
 };
 
 /** A folder of bookmarks, named by the reader; every bookmark is also under All. */
@@ -122,7 +134,17 @@ const DEFAULTS: Settings = {
   book: false,
   bookThemes: true,
   script: "uthmani",
+  arabicSpacing: "airy",
+  sound: true,
   sounds: true,
+  soundTaps: true,
+  soundTyping: true,
+  soundNotes: true,
+  soundRecord: true,
+  soundComplete: true,
+  soundSlider: true,
+  monoSky: "dark",
+  monoCard: "light",
 };
 
 const emptyReflection = (): Reflection => ({ summary: "", lessons: "", updatedAt: 0, recordings: [] });

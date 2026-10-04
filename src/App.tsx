@@ -15,6 +15,7 @@ import { frameRect, useViewport } from "@/lib/layout";
 import { useStore } from "@/lib/store";
 import { useUI } from "@/lib/ui";
 import { isLongPressMenu, watchLongPress, watchTwoFingerTap } from "@/lib/touch";
+import { watchSounds } from "@/lib/uiSounds";
 
 type Start = { surah: number; ayah: number; from?: OpenRequest["from"]; showOpener?: boolean };
 
@@ -87,12 +88,23 @@ export default function App() {
     return () => window.removeEventListener("hashchange", on);
   }, []);
 
+  // the site's sounds: taps, switches, keys (each kind can be turned off in Settings → Sound)
+  useEffect(() => watchSounds(), []);
+
   useEffect(() => {
     const root = document.documentElement;
-    root.dataset.box = settings.boxTheme;
+    const mono = settings.theme === "mono";
+    // Monochrome has its own two choices: the frame dark or light, the page around it dark or light
+    root.dataset.box = mono ? (settings.monoCard === "light" ? "paper" : "night") : settings.boxTheme;
+    if (mono) root.dataset.sky = settings.monoSky;
+    else delete root.dataset.sky;
     root.dataset.theme = settings.theme;
     root.dataset.motion = settings.reduceMotion ? "reduce" : "full";
-  }, [settings.boxTheme, settings.theme, settings.reduceMotion]);
+    root.dataset.arabic = settings.arabicSpacing;
+    // the phone's own bar (a home-screen app, Android's browser) takes the colour of the sky
+    const sky = getComputedStyle(root).getPropertyValue("--sky").trim();
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", sky || "#0b1320");
+  }, [settings.boxTheme, settings.theme, settings.reduceMotion, settings.arabicSpacing, settings.monoSky, settings.monoCard]);
 
   // after the first frame is on screen, later frame moves animate
   useEffect(() => {
@@ -137,16 +149,18 @@ export default function App() {
 
   // one frame for the whole site: the cover on page one, grown for the index and the reader
   const focus = useUI((s) => s.focus);
+  const reflow = useUI((s) => s.reflow);
   const rect =
     focus && phase === "read"
-      ? { left: 0, top: 0, width: vp.w, height: vp.h } // focus: the frame is the whole screen
-      : frameRect(vp.w, vp.h, phase === "intro" && !entering && !coverSettings && !about ? "intro" : phase === "intro" ? "select" : phase);
+      ? // focus: the frame is the whole screen (below the status bar, opened from the home screen)
+        { left: 0, top: vp.standalone ? vp.insets.top : 0, width: vp.w, height: vp.h - (vp.standalone ? vp.insets.top : 0) }
+      : frameRect(vp.w, vp.h, phase === "intro" && !entering && !coverSettings && !about ? "intro" : phase === "intro" ? "select" : phase, vp);
 
   return (
     <>
       <Backdrop theme={settings.theme} still={focus && phase === "read"} />
 
-      <Frame rect={rect} instant={firstFrame} amplitude={settings.reduceMotion || settings.theme === "mono" || settings.theme === "folio" || settings.theme === "paper" || focus ? 0 : phase === "read" ? 0.45 : 1}>
+      <Frame rect={rect} instant={firstFrame} quick={reflow} amplitude={settings.reduceMotion || settings.theme === "mono" || settings.theme === "folio" || settings.theme === "paper" || focus ? 0 : phase === "read" ? 0.45 : 1}>
         <AnimatePresence>
           {phase === "intro" && !entering && (
             <motion.div key="intro" className="absolute inset-[3px]" exit={{ opacity: 0, transition: { duration: 0.25 } }}>

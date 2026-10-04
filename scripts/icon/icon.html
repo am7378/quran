@@ -1,0 +1,62 @@
+<!doctype html>
+<!--
+  The app icon, as the home screen shows it: the night sky of the Classic theme, the site's square
+  frame on it, and a Q in Newsreader italic, cream warming to gold, its tail running out over the
+  frame's edge. Rendered to PNGs by trailer-build/make_icons.mjs (?s=scale: 1 full, ~0.78 for the
+  maskable icon, whose corners a phone may cut away).
+-->
+<html>
+<head>
+<meta charset="utf-8" />
+<style>
+  @font-face { font-family: "News"; font-style: italic; font-weight: 200 800; src: url("../../node_modules/@fontsource-variable/newsreader/files/newsreader-latin-opsz-italic.woff2") format("woff2-variations"); }
+  html, body { margin: 0; background: transparent; }
+  #icon { position: relative; width: 1024px; height: 1024px; overflow: hidden; background: #0b1320; }
+  .sky {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(58% 52% at 80% 14%, rgba(214, 176, 96, 0.55), rgba(214, 176, 96, 0) 72%),
+      radial-gradient(70% 60% at 12% 96%, rgba(62, 107, 115, 0.7), rgba(62, 107, 115, 0) 72%),
+      linear-gradient(158deg, #1b3359 0%, #0f1c31 52%, #070b14 100%);
+  }
+  .grain { position: absolute; inset: 0; opacity: 0.16; mix-blend-mode: overlay; }
+  .stage { position: absolute; inset: 0; transform-origin: 50% 50%; }
+  .frame {
+    position: absolute; left: 50%; top: 50%; width: 560px; height: 560px; margin: -292px 0 0 -280px;
+    border: 3px solid rgba(239, 233, 221, 0.26);
+    background: linear-gradient(160deg, rgba(14, 22, 38, 0.55), rgba(8, 12, 22, 0.75));
+    box-shadow: 0 46px 90px -34px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
+  .frame::before { /* the frame's header rule, as on the site */
+    content: ""; position: absolute; left: 0; right: 0; top: 62px; height: 2px; background: rgba(239, 233, 221, 0.12);
+  }
+  .q {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-family: "News"; font-style: italic; font-weight: 420; font-size: 640px; line-height: 1;
+    font-variation-settings: "opsz" 72;
+    padding: 0 0 70px 26px;
+    background: linear-gradient(172deg, #faf4e6 18%, #efe2bf 55%, #d9b064 92%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.45));
+  }
+  .star { /* the site's mark, small, over the frame's corner */
+    position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -320px 0 0 236px;
+  }
+</style>
+</head>
+<body>
+  <div id="icon">
+    <div class="sky"></div>
+    <svg class="grain" width="1024" height="1024"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="2" seed="7" /><feColorMatrix values="0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 0 0.5  0 0 0 1 0" /></filter><rect width="1024" height="1024" filter="url(#n)" /></svg>
+    <div class="stage" id="stage">
+      <div class="frame"></div>
+      <div class="q">Q</div>
+      <svg class="star" viewBox="0 0 32 32"><path d="M16 3l3.6 9.4L29 16l-9.4 3.6L16 29l-3.6-9.4L3 16l9.4-3.6z" fill="#d9b064" opacity="0.9" /></svg>
+    </div>
+  </div>
+  <script>
+    const s = Number(new URLSearchParams(location.search).get("s") || 1);
+    document.getElementById("stage").style.transform = `scale(${s})`;
+  </script>
+</body>
+</html>

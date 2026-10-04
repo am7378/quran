@@ -5,14 +5,29 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#0b1320" />
     <meta name="description" content="Read the Qur'an with the Quraan Made Easy, Saheeh International and Clear Quran translations, word-by-word meanings, highlights, notes and reflections." />
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%230b1320'/%3E%3Cpath d='M16 5l3.2 7.8L27 16l-7.8 3.2L16 27l-3.2-7.8L5 16l7.8-3.2z' fill='none' stroke='%23c9a24a' stroke-width='1.6'/%3E%3C/svg%3E" />
+    <link rel="icon" type="image/png" sizes="48x48" href="/icons/icon-48.png" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- added to the home screen: the app opens on its own, full screen, under a clear status bar -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Qur'an" />
     <title>The Qur'an</title>
     <script>
+      // opened from the home screen (an app of its own): laid out to the whole screen (lib/layout.ts)
+      if (matchMedia("(display-mode: standalone)").matches || navigator.standalone === true) document.documentElement.classList.add("standalone");
       // the theme chosen last time, set before anything is drawn (no flash of the default one)
       try {
         var saved = JSON.parse(localStorage.getItem("quran-reader") || "{}").state.settings;
         if (saved.theme) document.documentElement.dataset.theme = saved.theme;
         if (saved.boxTheme) document.documentElement.dataset.box = saved.boxTheme;
+        if (saved.arabicSpacing) document.documentElement.dataset.arabic = saved.arabicSpacing;
+        if (saved.theme === "mono") {
+          // Monochrome: the frame light unless chosen dark, the page dark unless chosen light
+          document.documentElement.dataset.box = saved.monoCard === "dark" ? "night" : "paper";
+          document.documentElement.dataset.sky = saved.monoSky === "light" ? "light" : "dark";
+        }
       } catch (e) {}
     </script>
   </head>

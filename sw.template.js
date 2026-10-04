@@ -22,6 +22,9 @@ const isShell = (path) =>
   // the fonts the page uses (not the other alphabets' subsets, nor the older woff copies)
   (/^assets\/.+\.woff2$/.test(path) && !/(cyrillic|vietnamese|greek|math|symbols)/.test(path)) ||
   /^fonts\//.test(path) ||
+  // the home-screen app: its manifest and icons
+  path === "manifest.webmanifest" ||
+  /^icons\//.test(path) ||
   /^data\/(surahs|glossary|summaries|topics|collections|themes)\.json$/.test(path);
 
 async function keep(cache, path) {

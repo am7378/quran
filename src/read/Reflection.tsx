@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { sfx } from "@/lib/sound";
 import { get, set, del } from "idb-keyval";
 import { Mic, Pause, Play, Square, Trash2 } from "lucide-react";
 import { ImmersivePanel, MenuGlyph, Reveal } from "@/components/ImmersivePanel";
@@ -159,6 +160,7 @@ function Recorder({ surah }: { surah: number }) {
       media.current = { rec, stream, chunks, start: performance.now(), ctx, raf: 0 };
       rec.start(250);
       setState("recording");
+      sfx("recOn");
       media.current.raf = requestAnimationFrame(draw);
     } catch {
       setState("denied");
@@ -170,6 +172,7 @@ function Recorder({ surah }: { surah: number }) {
     if (!m) return;
     cancelAnimationFrame(m.raf);
     const dur = (performance.now() - m.start) / 1000;
+    if (!discard) sfx("recOff");
     m.rec.onstop = async () => {
       m.stream.getTracks().forEach((t) => t.stop());
       m.ctx.close();
@@ -202,6 +205,7 @@ function Recorder({ surah }: { surah: number }) {
         <button
           type="button"
           disabled={state === "unsupported"}
+          data-sfx="none"
           onClick={() => (state === "recording" ? stop() : start())}
           aria-label={state === "recording" ? "Stop recording" : "Record your reflection"}
           className={cn(

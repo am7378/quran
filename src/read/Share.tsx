@@ -21,6 +21,7 @@ export type ShareContent = {
   script?: "uthmani" | "indopak";
   theme?: ThemeId; // drawn the way this theme is
   box?: "night" | "paper";
+  sky?: "dark" | "light"; // Monochrome's page around the frame
 };
 
 /**
@@ -246,7 +247,8 @@ const classic: Look = {
 /* Monochrome: a charcoal sheet on stone, drawn square: viewfinder marks, a dashed foot with the
    reference set like a sheet's footer, a checkerboard strip beneath; the art in greys ("White":
    the sheet turned to paper) */
-function mono(white: boolean): Look {
+function mono(white: boolean, dark: boolean): Look {
+  const ground = dark ? "#121212" : "#e6e2dc", ink = dark ? "#ece6dc" : "#161616";
   const fg = white ? "22,22,22" : "236,230,220";
   const geom = (k: Ctx) => {
     const q = Math.round(k.S * 0.012); // the checkerboard's squares
@@ -262,7 +264,7 @@ function mono(white: boolean): Look {
     paint(g, k) {
       const { W, H, S, art } = k;
       const { q, x0, y0, x1, y1, foot, pad } = geom(k);
-      g.fillStyle = "#e6e2dc";
+      g.fillStyle = ground;
       g.fillRect(0, 0, W, H);
       grainOn(g, k, 0.7);
       g.fillStyle = white ? "#f3f0ea" : "#161616";
@@ -276,11 +278,11 @@ function mono(white: boolean): Look {
         g.drawImage(art, 0, 0, W, H);
         g.restore();
       }
-      g.strokeStyle = "#161616";
+      g.strokeStyle = dark && white ? "#f3f0ea" : dark ? "rgba(236,230,220,0.28)" : "#161616";
       g.lineWidth = 2;
       g.strokeRect(x0 + 1, y0 + 1, x1 - x0 - 2, y1 - y0 - 2);
       // the checkerboard strip
-      g.fillStyle = "#161616";
+      g.fillStyle = ink; // the checkerboard: the page's ink
       for (let r = 0; r < 2; r++)
         for (let x = x0, i = 0; x < x1; x += q, i++) if ((i + r) % 2 === 0) g.fillRect(x, y1 + r * q, Math.min(q, x1 - x), q);
       // viewfinder marks around the text
@@ -642,10 +644,10 @@ const lunar: Look = (() => {
   };
 })();
 
-function lookOf(theme: ThemeId | undefined, box: "night" | "paper" | undefined): Look {
+function lookOf(theme: ThemeId | undefined, box: "night" | "paper" | undefined, sky?: "dark" | "light"): Look {
   switch (theme) {
     case "mono":
-      return mono(box === "paper");
+      return mono(box === "paper", sky === "dark");
     case "atlas":
       return atlas;
     case "folio":
@@ -662,7 +664,7 @@ function lookOf(theme: ThemeId | undefined, box: "night" | "paper" | undefined):
 /** Draw the ayah and its translation — nothing else but the reference — the current theme's way. */
 export async function renderAyahImage(o: ShareContent, format: ShareFormat): Promise<Blob> {
   const [W, H] = SIZES[format];
-  const look = lookOf(o.theme, o.box);
+  const look = lookOf(o.theme, o.box, o.sky);
   const arFont = o.script === "indopak" ? '"IndoPak"' : '"KFGQPC HAFS"';
   await Promise.all([document.fonts.load(`64px ${arFont}`), ...look.fonts.map((f) => document.fonts.load(f))]).catch(() => {});
   const c = document.createElement("canvas");

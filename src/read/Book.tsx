@@ -47,7 +47,7 @@ export const BookText = memo(function BookText({
           <div key={pi} className={pi ? "mt-10" : ""}>
             {p.theme && <div className="label mb-4 text-[var(--box-faint)]">{p.theme}</div>}
             {arabic ? (
-              <p className="quran book-ar text-start text-[var(--box-fg)] md:text-justify" dir="rtl" lang="ar" style={{ fontSize: arPx, lineHeight: 2.15 }}>
+              <p className="quran book-ar text-start text-[var(--box-fg)] md:text-justify" dir="rtl" lang="ar" style={{ fontSize: arPx, lineHeight: settings.arabicSpacing === "close" ? 1.9 : 2.15 }}>
                 {p.verses.map((v) => {
                   const key = `${surah}:${v.n}`;
                   const { words } = arabicWords(v, settings.script);

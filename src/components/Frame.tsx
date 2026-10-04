@@ -14,11 +14,13 @@ export function Frame({
   children,
   amplitude = 1,
   instant,
+  quick,
 }: {
   rect: Rect;
   children: ReactNode;
   amplitude?: number; // 0 disables the tilt
   instant?: boolean;
+  quick?: boolean; // into focus and out of it: a shorter move
 }) {
   const rx = useSpring(0, { stiffness: 90, damping: 18, mass: 0.6 });
   const ry = useSpring(0, { stiffness: 90, damping: 18, mass: 0.6 });
@@ -88,7 +90,7 @@ export function Frame({
       initial={{ opacity: 0, y: 14, left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
       animate={{ opacity: 1, y: 0, left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
       transition={{
-        ...(instant ? { duration: 0 } : { duration: 0.9, ease: EASE_IN_OUT }),
+        ...(instant ? { duration: 0 } : quick ? { duration: 0.55, ease: EASE_IN_OUT } : { duration: 0.9, ease: EASE_IN_OUT }),
         // it comes in once, when the site opens
         opacity: { duration: 0.9, delay: 0.1 },
         y: { duration: 1, delay: 0.1, ease: [0.22, 1, 0.36, 1] },

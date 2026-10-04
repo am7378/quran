@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { sfx } from "@/lib/sound";
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { set } from "idb-keyval";
@@ -84,6 +85,7 @@ export function VoiceRecorder({
       media.current = { rec, stream, chunks, start: performance.now(), ctx, raf: 0 };
       rec.start(250);
       setState("recording");
+      sfx("recOn");
       media.current.raf = requestAnimationFrame(draw);
     } catch {
       setState("denied");
@@ -95,6 +97,7 @@ export function VoiceRecorder({
     if (!m) return;
     cancelAnimationFrame(m.raf);
     const dur = (performance.now() - m.start) / 1000;
+    if (!discard) sfx("recOff");
     m.rec.onstop = async () => {
       m.stream.getTracks().forEach((t) => t.stop());
       m.ctx.close();
@@ -145,6 +148,7 @@ export function VoiceRecorder({
             <button
               type="button"
               disabled={state === "unsupported"}
+          data-sfx="none"
               onClick={() => (state === "recording" ? (stop(), onClose()) : start())}
               aria-label={state === "recording" ? "Stop and save" : "Start recording"}
               className={`relative flex h-12 w-12 shrink-0 items-center justify-center border transition-colors ${

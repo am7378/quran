@@ -1,4 +1,6 @@
 import type { ReactNode } from "react";
+import { glossByTerm, glossFor } from "./terms";
+import { refsIn, type Ref } from "./Peek";
 
 /**
  * A glossary entry as the pop-up shows it. The definitions are Quraan Made Easy's own, word for
@@ -8,7 +10,42 @@ import type { ReactNode } from "react";
  *  - another Arabic term the definition uses has its English beside it in brackets, the first
  *    time it appears ("Imaan (faith)"), in the words the glossary itself defines it with.
  * Words inside quotation marks (the Kalimah, a title) are left as they are.
+ *
+ * Where an entry sends the reader on ("See Rasool", "See also Kufr and Mushrikeen", "see verses
+ * 92-99 of Surah 18"), what it names is a link: another term opens its own meaning beside this one,
+ * an ayah opens the ayah (as a note's references do).
  */
+export type GlossLinks = {
+  onSee: (term: string, el: HTMLElement, hover: boolean) => void;
+  onRef: (r: Ref, el: HTMLElement) => void;
+  onHoverEnd: () => void;
+};
+
+/** The places in an entry that send the reader on: the names after "see", and ayah references. */
+function crossRefs(s: string, term: string): { at: number; end: number; see?: string; ref?: Ref }[] {
+  const out: { at: number; end: number; see?: string; ref?: Ref }[] = [];
+  const self = term.toLowerCase();
+  const seeRe = /\b[Ss]ee(?:\s+also)?\s+/g;
+  let m: RegExpExecArray | null;
+  while ((m = seeRe.exec(s))) {
+    let i = m.index + m[0].length;
+    // a run of names: Rasool · Kufr (disbelief) and Mushrikeen · 'Mutashaabihaat'
+    for (;;) {
+      const w = /^(['‘]?)([A-Z][A-Za-z']*(?: [A-Z][A-Za-z']*)?)/.exec(s.slice(i));
+      if (!w) break;
+      const name = w[2].replace(/'$/, "");
+      const g = glossByTerm(name) ?? glossFor(name);
+      if (g && g.term.toLowerCase() !== self) out.push({ at: i + w[1].length, end: i + w[1].length + name.length, see: g.term });
+      i += w[0].length;
+      const more = /^['’]?\s*(?:\([^)]*\))?\s*(?:,|and)\s+/.exec(s.slice(i));
+      if (!more) break;
+      i += more[0].length;
+    }
+  }
+  for (const r of refsIn(s)) out.push({ at: r.at, end: r.end, ref: r });
+  out.sort((a, b) => a.at - b.at);
+  return out.filter((x, k) => !out.slice(0, k).some((o) => x.at < o.end));
+}
 
 /** [the term as written, its English]: phrases before their single words */
 const ENGLISH: [RegExp, string][] = [
@@ -136,7 +173,7 @@ function quoted(s: string): [number, number][] {
   return out;
 }
 
-export function glossNodes(text: string, term: string): ReactNode[] {
+export function glossNodes(text: string, term: string, links?: GlossLinks): ReactNode[] {
   let s = text;
   for (const [re, to] of HONORIFIC) s = s.replace(re, to);
   // the entry's own words are not explained in brackets inside it
@@ -156,13 +193,37 @@ export function glossNodes(text: string, term: string): ReactNode[] {
     }
   }
   // honorific marks to their Arabic
-  return s.split(/\u0001([SHRP])\u0001/).map((part, i) => {
-    if (i % 2 === 0) return part;
-    const h = SHOW[part];
-    return (
-      <span key={i} className={h.cls} lang="ar" title={h.meaning}>
-        {h.text}
-      </span>
+  const plain = (str: string, k: string) =>
+    str.split(/\u0001([SHRP])\u0001/).map((part, i) => {
+      if (i % 2 === 0) return part;
+      const h = SHOW[part];
+      return (
+        <span key={k + i} className={h.cls} lang="ar" title={h.meaning}>
+          {h.text}
+        </span>
+      );
+    });
+  if (!links) return plain(s, "t");
+  // and the cross-references made links
+  const out: ReactNode[] = [];
+  let at = 0;
+  for (const x of crossRefs(s, term)) {
+    out.push(...plain(s.slice(at, x.at), `t${at}-`));
+    const label = s.slice(x.at, x.end);
+    out.push(
+      <button
+        key={`l${x.at}`}
+        type="button"
+        className="gloss-link"
+        onClick={(e) => (x.see ? links.onSee(x.see, e.currentTarget, false) : links.onRef(x.ref!, e.currentTarget))}
+        onPointerEnter={(e) => e.pointerType === "mouse" && x.see && links.onSee(x.see, e.currentTarget, true)}
+        onPointerLeave={(e) => e.pointerType === "mouse" && links.onHoverEnd()}
+      >
+        {label}
+      </button>,
     );
-  });
+    at = x.end;
+  }
+  out.push(...plain(s.slice(at), `t${at}-`));
+  return out;
 }

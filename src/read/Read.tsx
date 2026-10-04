@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { Actions, AyahSection, ContextToggle, type AyahAction } from "./Ayah";
 import { HONORIFICS, glossByTerm, glossFor, loadGlossary } from "./terms";
-import { HighlightMenu, StickyNotes, Toast, WordTip, type Tip } from "./Overlays";
+import { HighlightMenu, StickyNotes, Toast, WordTip, tipHover, type Tip } from "./Overlays";
 import { ReflectionPanel } from "./Reflection";
 import { SettingsPanel } from "./Settings";
 import { SurahSummary } from "./Summary";
@@ -53,7 +53,7 @@ import { AyahPeek } from "./Peek";
 
 const GLOSSED = ".gl, .saw, .hon"; // translation terms and honorifics with a meaning on hover
 // the settings an ayah is drawn with
-const AYAH_KEYS = ["translation", "also", "book", "bookThemes", "showContext", "readingMode", "arabicScale", "transScale", "wordHover", "script", "view", "reduceMotion"] as const;
+const AYAH_KEYS = ["translation", "also", "book", "bookThemes", "showContext", "readingMode", "arabicScale", "transScale", "wordHover", "script", "arabicSpacing", "view", "reduceMotion"] as const;
 
 type Props = {
   surahs: Surah[];
@@ -91,6 +91,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
   const bookMode = settings.view === 3 && settings.readingMode !== "both" && settings.book;
   const [panel, setPanel] = useState<null | "settings" | "saved" | "reflection" | "search">(null);
   const [tip, setTip] = useState<Tip | null>(null);
+  const closeTip = useCallback(() => setTip(null), []);
   // a panel opened over the page: what was floating over the page goes
   useEffect(() => {
     if (!panel) return;
@@ -145,16 +146,25 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
   useLayoutEffect(() => {
     const el = scroller.current;
     if (!el) return;
-    const ro = new ResizeObserver(() => {
+    const measure = () => {
       setViewW(Math.round(el.clientWidth / 16) * 16);
       const h = Math.round(el.clientHeight / 8) * 8;
       setViewH((old) => {
         if (old && old !== h && keepOnResize.current === null) keepOnResize.current = activeRef.current;
         return h;
       });
-    });
+    };
+    // (while the frame moves into focus or out of it, the ayahs wait: they are fitted once, at the
+    // size it comes to, not at every size on the way)
+    const ro = new ResizeObserver(() => !useUI.getState().reflow && measure());
     ro.observe(el);
-    return () => ro.disconnect();
+    const off = useUI.subscribe((st, prev) => {
+      if (prev.reflow && !st.reflow) measure();
+    });
+    return () => {
+      ro.disconnect();
+      off();
+    };
   }, []);
   useLayoutEffect(() => {
     const keep = keepOnResize.current;
@@ -164,6 +174,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       const sc = scroller.current;
       const el = sc?.querySelector<HTMLElement>(`[data-n="${keep}"]`);
       if (sc && el) sc.scrollTop = el.offsetTop;
+      anchorNow.current();
     };
     place();
     // and again once long ayahs have refitted to the new height
@@ -204,6 +215,9 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     };
   }, [surahN, surahs, retry]);
 
+  // the one-ayah view's anchor (below): told at once when the page itself moves the reader
+  const anchorNow = useRef<() => void>(() => {});
+
   /* ── scroll to a pending target once the surah is rendered ──── */
   const scrollToAyah = useCallback((ayah: number, smooth = true) => {
     const sc = scroller.current;
@@ -224,6 +238,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     const top = topOf();
     if (!smooth || settings.reduceMotion) {
       sc.scrollTo({ top, behavior: "auto" });
+      anchorNow.current();
       // held there for a few frames while the ayahs around it are laid out and take their own
       // heights (an ayah taller than the frame does not snap back by itself); anything else that
       // moves the page meanwhile (the reader, the page keeping its place) ends it
@@ -232,6 +247,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
           if (Math.abs(sc.scrollTop - want) > 1) return;
           const t = topOf();
           if (Math.abs(t - want) > 1) sc.scrollTop = t;
+          anchorNow.current();
           if (frames > 1) hold(frames - 1, sc.scrollTop);
         });
       hold(3, sc.scrollTop);
@@ -284,7 +300,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings.readingMode, settings.book, settings.bookThemes, settings.arabicScale, settings.transScale, settings.translation]);
+  }, [settings.readingMode, settings.book, settings.bookThemes, settings.arabicScale, settings.arabicSpacing, settings.transScale, settings.translation]);
 
   /* ── the multiple-ayah view scrolls freely, but its opening page and its
      closing page are pages. The moment the scrolling crosses into one (the
@@ -467,6 +483,51 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     return () => ro.disconnect();
   }, [data, bookMode]);
 
+  /* ── one ayah at a time: the reader stays on the ayah they are reading, at the same place in it,
+     whatever changes height (the context switched on or off, a long ayah above laid out, an ayah
+     refitting). The browser's snapping alone may land on the next ayah once heights change (a long
+     ayah grown shorter under the reader, on a phone especially). ── */
+  useLayoutEffect(() => {
+    const sc = scroller.current;
+    if (!sc || !data || settings.view !== 1) return;
+    const items = () => sc.querySelectorAll<HTMLElement>("[data-n]");
+    // the ayah at the top of the frame, and how far into it the reader has scrolled
+    let anchor: { el: HTMLElement; off: number } | null = null;
+    const note = () => {
+      const y = sc.scrollTop + 2;
+      let cur: HTMLElement | null = null;
+      for (const el of items()) {
+        if (el.offsetTop <= y) cur = el;
+        else break;
+      }
+      anchor = cur ? { el: cur, off: sc.scrollTop - cur.offsetTop } : null;
+    };
+    let placing = false;
+    const onScroll = () => {
+      if (!placing) note();
+    };
+    anchorNow.current = note;
+    const ro = new ResizeObserver(() => {
+      const a = anchor;
+      if (!a || !a.el.isConnected) return;
+      const room = Math.max(0, a.el.offsetHeight - sc.clientHeight);
+      const want = a.el.offsetTop + Math.min(Math.max(0, a.off), room);
+      if (Math.abs(sc.scrollTop - want) < 1) return;
+      placing = true;
+      sc.scrollTop = want;
+      a.off = want - a.el.offsetTop;
+      requestAnimationFrame(() => (placing = false));
+    });
+    sc.querySelectorAll("section[data-key]").forEach((s) => ro.observe(s));
+    note();
+    sc.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      anchorNow.current = () => {};
+      ro.disconnect();
+      sc.removeEventListener("scroll", onScroll);
+    };
+  }, [data, settings.view, bookMode]);
+
   /* ── switching between one ayah and the multiple-ayah view: the page fades
      out, changes its layout while it cannot be seen, keeps the same ayah at the
      top, and fades back in once the long ayahs have settled their size. The
@@ -528,6 +589,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
         if (closing && closing !== el) top = Math.min(top, closing.offsetTop - sc.clientHeight);
       }
       sc.scrollTop = Math.max(0, top);
+      anchorNow.current();
     };
     place();
     if (settings.reduceMotion) {
@@ -625,9 +687,10 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
         surah: surahN,
         script: settings.script,
         theme: settings.theme,
-        box: settings.boxTheme,
+        box: settings.theme === "mono" ? (settings.monoCard === "light" ? "paper" : "night") : settings.boxTheme,
+        sky: settings.monoSky,
       }),
-    [settings.translation, settings.script, settings.theme, settings.boxTheme, surah, surahN],
+    [settings.translation, settings.script, settings.theme, settings.boxTheme, settings.monoCard, settings.monoSky, surah, surahN],
   );
 
   // one function for the life of the reader, so the ayahs (memoised) don't redraw each time it would change
@@ -720,7 +783,8 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       addHighlight({ id, key, field: fieldName, start: s, end: e, color: "yellow", text, at: Date.now() });
       sel?.removeAllRanges();
       strokeEnd();
-      if (useStore.getState().settings.sounds && !strokeRecently()) playHighlight(Math.min(1, text.length / 120));
+      const snd = useStore.getState().settings;
+      if (snd.sound && snd.sounds && !strokeRecently()) playHighlight(Math.min(1, text.length / 120));
       openMenuFor(id, false, true);
     }, 10);
   };
@@ -747,7 +811,8 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       strokeEnd();
     };
     const change = () => {
-      if (!useStore.getState().settings.sounds) return;
+      const snd = useStore.getState().settings;
+      if (!snd.sound || !snd.sounds) return;
       const sel = window.getSelection();
       const inside = !!sel && !sel.isCollapsed && root.contains(sel.anchorNode) && !!(sel.anchorNode?.parentElement?.closest("[data-field]"));
       if (!inside) {
@@ -881,7 +946,10 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     if (matchMedia("(pointer: coarse)").matches) return;
     const t = e.target as HTMLElement;
     const gl = t.closest<HTMLElement>(GLOSSED);
-    if (gl) return showGloss(gl);
+    if (gl) {
+      tipHover.stay();
+      return showGloss(gl);
+    }
     if (!settings.wordHover) return;
     const word = t.closest<HTMLElement>(".word");
     if (word) showTip(word);
@@ -889,7 +957,12 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
   const onOut = (e: React.MouseEvent) => {
     const from = (e.target as HTMLElement).closest(`.word, ${GLOSSED}`);
     const to = (e.relatedTarget as HTMLElement | null)?.closest?.(`.word, ${GLOSSED}`);
-    if (from && from !== to) setTip(null);
+    if (!from || from === to) return;
+    // straight from the term into its meaning (the browser tells the box first, then the term): it stays
+    if ((e.relatedTarget as HTMLElement | null)?.closest?.("[data-tip]")) return tipHover.stay();
+    // a term's meaning stays a moment, so the pointer can go into it (to follow a "see …")
+    if (from.matches(GLOSSED)) tipHover.leave(closeTip);
+    else setTip(null);
   };
 
 
@@ -897,7 +970,8 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
      screen where it can); the header, footer, slider and tabs go; the ayahs, their meanings,
      highlights, notes and their own buttons stay ── */
   const enterFocus = useCallback((on: boolean) => {
-    useUI.getState().setFocus(on);
+    if (useUI.getState().focus === on) return;
+    reflowFor(on);
     setPanel(null);
     setMenu(null);
     const el = document.documentElement;
@@ -907,7 +981,10 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
   useEffect(() => {
     // the browser's own way out of full screen (its Esc) leaves focus too
     const on = () => {
-      if (!document.fullscreenElement && useUI.getState().focus) useUI.getState().setFocus(false);
+      if (!document.fullscreenElement && useUI.getState().focus) reflowFor(false);
+      // the window itself changing size (full screen coming or going) as the frame moves: the page
+      // waits for that too
+      else if (useUI.getState().reflow) settleReflow(260);
     };
     document.addEventListener("fullscreenchange", on);
     return () => {
@@ -916,6 +993,33 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       useUI.getState().setPeek(null);
     };
   }, []);
+
+  // the page goes quiet while the frame moves into focus (or out), and comes back laid out once, on
+  // the ayah it was on
+  const reflow = useUI((s) => s.reflow);
+  const reflowFade = useRef<Animation | null>(null);
+  const reflowAt = useRef(0);
+  useLayoutEffect(() => {
+    const sc = scroller.current;
+    if (!sc) return;
+    if (reflow) {
+      reflowAt.current = activeRef.current;
+      if (!settings.reduceMotion) reflowFade.current = sc.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 140, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "forwards" });
+      return;
+    }
+    let raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(() => {
+        const el = sc.querySelector<HTMLElement>(`[data-n="${reflowAt.current}"]`);
+        if (el && settings.view === 1) sc.scrollTop = el.offsetTop;
+        anchorNow.current();
+        if (!reflowFade.current) return;
+        reflowFade.current.cancel();
+        reflowFade.current = null;
+        sc.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, easing: "cubic-bezier(0, 0, 0.2, 1)", fill: "backwards" });
+      });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [reflow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── keyboard ───────────────────────────────────────────────── */
   useEffect(() => {
@@ -1400,7 +1504,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       {/* floating layers live on <body>: the tilted frame would re-anchor fixed positioning */}
       {createPortal(
         <>
-          <WordTip tip={tip} translit={settings.translit} />
+          <WordTip tip={tip} translit={settings.translit} onClose={closeTip} />
           <HighlightMenu
             hl={menuHl}
             at={menu?.at ?? null}
@@ -2026,3 +2130,17 @@ function SearchPanelBody({
   );
 }
 let searchBy: IndexKind = "ring"; // the way of browsing last chosen in the search, kept for its next opening
+
+/* ── into focus and out of it: the frame moves (App gives it a shorter move while reflow is on) and
+   the page waits until it has stopped, and until the window has finished changing size ── */
+let reflowTimer = 0;
+function settleReflow(ms: number) {
+  window.clearTimeout(reflowTimer);
+  reflowTimer = window.setTimeout(() => useUI.getState().setReflow(false), ms);
+}
+function reflowFor(on: boolean) {
+  const ui = useUI.getState();
+  ui.setReflow(true);
+  ui.setFocus(on);
+  settleReflow(620); // (the frame's move is 0.55s)
+}

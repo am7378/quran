@@ -12,11 +12,12 @@ import type { Surah, Translation, Verse } from "@/lib/data";
 import { TRANSLATIONS, loadSurah, translationText } from "@/lib/data";
 import { EASE_OUT, cn } from "@/lib/utils";
 
-type Tab = "reading" | "translation" | "display" | "saved" | "progress" | "guide";
+type Tab = "reading" | "translation" | "display" | "sound" | "saved" | "progress" | "guide";
 const TABS: { id: Tab; name: string }[] = [
   { id: "reading", name: "Reading" },
   { id: "translation", name: "Translation" },
   { id: "display", name: "Display" },
+  { id: "sound", name: "Sound" },
   { id: "saved", name: "Saved" },
   { id: "progress", name: "Progress" },
   { id: "guide", name: "Guide" },
@@ -104,6 +105,7 @@ export function SettingsPanel({
                 {tab === "reading" && <ReadingTab s={settings} set={set} />}
                 {tab === "translation" && <TranslationTab s={settings} set={set} />}
                 {tab === "display" && <DisplayTab s={settings} set={set} />}
+                {tab === "sound" && <SoundTab s={settings} set={set} />}
                 {tab === "saved" && <SavedTab surahs={surahs} onGo={onGo} />}
                 {tab === "progress" && <ProgressTab surahs={surahs} onGo={onGo} />}
                 {tab === "guide" && <GuideTab />}
@@ -154,6 +156,16 @@ function ReadingTab({ s, set }: TabProps) {
           options={[
             ["uthmani", "Madani"],
             ["indopak", "Indo-Pak"],
+          ]}
+        />
+      </Row>
+      <Row label="Arabic spacing" hint="Close sets the words and lines nearer together, as a printed mushaf does">
+        <Segmented
+          value={s.arabicSpacing}
+          onChange={(v) => set({ arabicSpacing: v })}
+          options={[
+            ["airy", "Airy"],
+            ["close", "Close"],
           ]}
         />
       </Row>
@@ -271,16 +283,41 @@ function DisplayTab({ s, set }: TabProps) {
           ))}
         </div>
       </Row>
-      {(s.theme === "classic" || s.theme === "mono") && <Row label="Frame">
-        <Segmented
-          value={s.boxTheme}
-          onChange={(v) => set({ boxTheme: v })}
-          options={s.theme === "mono" ? [["night", "Black"], ["paper", "White"]] : [["night", "Night"], ["paper", "Paper"]]}
-        />
-      </Row>}
-      <Toggle label="Highlighter sound" on={s.sounds} set={(v) => set({ sounds: v })} />
+      {s.theme === "classic" && (
+        <Row label="Frame">
+          <Segmented value={s.boxTheme} onChange={(v) => set({ boxTheme: v })} options={[["night", "Night"], ["paper", "Paper"]]} />
+        </Row>
+      )}
+      {s.theme === "mono" && (
+        <>
+          <Row label="Background">
+            <Segmented value={s.monoSky} onChange={(v) => set({ monoSky: v })} options={[["dark", "Dark"], ["light", "Light"]]} />
+          </Row>
+          <Row label="Frame">
+            <Segmented value={s.monoCard} onChange={(v) => set({ monoCard: v })} options={[["light", "Light"], ["dark", "Dark"]]} />
+          </Row>
+        </>
+      )}
       <Toggle label="Film grain" on={s.grain} set={(v) => set({ grain: v })} />
       <Toggle label="Reduce motion" on={s.reduceMotion} set={(v) => set({ reduceMotion: v })} />
+    </>
+  );
+}
+
+function SoundTab({ s, set }: TabProps) {
+  const off = !s.sound;
+  return (
+    <>
+      <Toggle label="Sounds" hint="Quiet sounds as you use the reader. Each kind can be turned off below." on={s.sound} set={(v) => set({ sound: v })} />
+      <div className={cn("flex flex-col gap-7 border-l border-[var(--box-line)] pl-5 transition-opacity duration-300", off && "pointer-events-none opacity-40")} aria-disabled={off || undefined}>
+        <Toggle label="Taps and switches" hint="Buttons, switches and menus" on={s.soundTaps} set={(v) => set({ soundTaps: v })} />
+        <Toggle label="Typing" hint="Writing a note, a reflection or a search" on={s.soundTyping} set={(v) => set({ soundTyping: v })} />
+        <Toggle label="Highlighter" hint="The marker drawn across the words" on={s.sounds} set={(v) => set({ sounds: v })} />
+        <Toggle label="Ayah slider" hint="A fine click for each ayah as you slide" on={s.soundSlider} set={(v) => set({ soundSlider: v })} />
+        <Toggle label="Moving notes" hint="A note picked up and put down" on={s.soundNotes} set={(v) => set({ soundNotes: v })} />
+        <Toggle label="Recording" hint="A voice note starting and stopping" on={s.soundRecord} set={(v) => set({ soundRecord: v })} />
+        <Toggle label="Completing a surah" hint="A soft chime when you mark one as completed" on={s.soundComplete} set={(v) => set({ soundComplete: v })} />
+      </div>
     </>
   );
 }

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { animate, motionValue } from "framer-motion";
 import type { ReactNode } from "react";
 import type { Note } from "./store";
+import { sfx } from "./sound";
 
 export type MenuItem =
   | { type: "item"; label: string; hint?: string; icon?: ReactNode; onSelect: () => void; disabled?: boolean }
@@ -20,6 +21,9 @@ type UI = {
   setAbout: (b: boolean) => void;
   focus: boolean; // reading with nothing else: the frame fills the screen, only the ayahs and their tools
   setFocus: (b: boolean) => void;
+  // the frame changing size into focus or out of it: the page waits, then lays itself out once
+  reflow: boolean;
+  setReflow: (b: boolean) => void;
   // an ayah a note refers to ("see 23:12"), open beside it to read without leaving the page
   peek: Peek | null;
   setPeek: (p: Peek | null) => void;
@@ -79,7 +83,10 @@ export const useUI = create<UI>((set) => ({
   flipped: false,
   setFlipped: (flipped) => set({ flipped }),
   menu: null,
-  openMenu: (x, y, items) => set({ menu: { x, y, items } }),
+  openMenu: (x, y, items) => {
+    sfx("menu"); // (a right click, a long press, two fingers)
+    set({ menu: { x, y, items } });
+  },
   closeMenu: () => set({ menu: null }),
   noteShare: null,
   shareNote: (noteShare) => set({ noteShare }),
@@ -87,6 +94,8 @@ export const useUI = create<UI>((set) => ({
   setAbout: (about) => set({ about }),
   focus: false,
   setFocus: (focus) => set({ focus }),
+  reflow: false,
+  setReflow: (reflow) => set({ reflow }),
   peek: null,
   setPeek: (peek) => set({ peek }),
 }));

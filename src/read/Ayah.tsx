@@ -62,6 +62,7 @@ export const AyahSection = memo(function AyahSection({
         .filter((x, i, all) => x.source !== tr.source && all.findIndex((y) => y.source === x.source) === i)
     : [];
   const { canon: arCanon, words } = arabicWords(v, settings.script);
+  const close = settings.arabicSpacing === "close"; // the words and lines set nearer, as a printed mushaf
 
   const ref = useRef<HTMLElement>(null);
   const oneRef = useRef(one);
@@ -99,7 +100,7 @@ export const AyahSection = memo(function AyahSection({
   const arPx = Math.round(Math.max(arBase * fit, Math.min(arBase, arMin)) * 10) / 10;
   const trPx = one ? Math.round(Math.max((mobile ? 15 : 16) * settings.transScale, trBase * (0.3 + 0.7 * fit)) * 10) / 10 : trBase;
 
-  const sig = `${view}|${settings.readingMode}|${settings.translation}|${settings.also.join(",")}|${settings.script}|${settings.arabicScale}|${settings.transScale}|${mobile}`;
+  const sig = `${view}|${settings.readingMode}|${settings.translation}|${settings.also.join(",")}|${settings.script}|${settings.arabicSpacing}|${settings.arabicScale}|${settings.transScale}|${mobile}`;
   const last = useRef({ sig: "", viewH: 0, steps: 0 });
   useLayoutEffect(() => {
     const L = last.current;
@@ -123,7 +124,10 @@ export const AyahSection = memo(function AyahSection({
       if (skipped) el.style.contentVisibility = "visible";
       const h = el.offsetHeight;
       if (skipped) el.style.contentVisibility = "";
-      if (h > viewH + 2) {
+      // (viewH is rounded to fewer steps, for fewer redraws: the fit is to the frame's exact height,
+      // so an ayah never needs a few pixels' scroll)
+      const room = el.closest<HTMLElement>(".snap-scroller")?.clientHeight || viewH;
+      if (h > room + 1) {
         if (!dense) return setDense(true);
         if (fit > FIT_FLOOR + 0.001 && L.steps < 5) {
           L.steps++;
@@ -232,7 +236,7 @@ export const AyahSection = memo(function AyahSection({
       data-field="ar"
       data-key={key}
       className={cn("quran text-right text-[var(--box-fg)]", settings.script === "indopak" && "indopak", settings.wordHover && "word-hover")}
-      style={{ fontSize: arPx, lineHeight: one ? (dense ? 1.95 : 2.1) : 2 }}
+      style={{ fontSize: arPx, lineHeight: close ? (one ? (dense ? 1.78 : 1.88) : 1.82) : one ? (dense ? 1.95 : 2.1) : 2 }}
       lang="ar"
     >
       {renderArabic(
@@ -310,7 +314,7 @@ export const AyahSection = memo(function AyahSection({
   const w = Math.max(220, fw * (one ? 0.8 : 0.88) - 50);
   const lines = (chars: number, px: number, k: number) => Math.max(1, Math.ceil((chars * px * k) / w));
   let hold = 0;
-  if (showAr) hold += lines(arCanon.length, arPx, 0.215) * arPx * (one ? 2.1 : 2);
+  if (showAr) hold += lines(arCanon.length, arPx, close ? 0.2 : 0.215) * arPx * (close ? 1.85 : one ? 2.1 : 2);
   if (showTr) hold += lines(tr.canon.length * (tr.source === "qme" && !ctxShown ? 0.62 : 1), trPx, 0.41) * trPx * 1.6;
   for (const x of extras) hold += lines(x.canon.length, trPx * 0.94, 0.41) * trPx * 1.5 + 44;
   // and the number, the rule or gap between Arabic and English (the one-ayah view's full-height
@@ -330,7 +334,7 @@ export const AyahSection = memo(function AyahSection({
         one
           ? "min-h-full justify-center pl-[max(7%,34px)] pr-[max(7%,66px)] md:pl-[9%] md:pr-[max(9%,64px)]"
           : cn(
-              "border-b border-[var(--box-line)] pb-9 pl-[max(6%,34px)] pr-[max(calc(6%+44px),66px)] pt-7 md:pl-[6%] md:pr-[calc(6%+44px)] md:pt-9",
+              "justify-center border-b border-[var(--box-line)] pb-9 pl-[max(6%,34px)] pr-[max(calc(6%+44px),66px)] pt-7 md:pl-[6%] md:pr-[calc(6%+44px)] md:pt-9",
               // never shorter than its column of buttons (five, 168px) with the column's insets
               showAr ? "min-h-[252px] md:min-h-[260px]" : "min-h-[232px] md:min-h-[240px]",
             ),
@@ -345,7 +349,18 @@ export const AyahSection = memo(function AyahSection({
         {!one && showAr && showTr && <div className="h-4" />}
         {translation}
         {more}
+        {/* an ayah too long for the frame: where it ends is plain to see */}
+        {one && over && (
+          <div className="label-sm mt-9 flex items-center justify-center gap-3 text-[var(--box-faint)]" dir="ltr" aria-hidden>
+            <span className="h-px w-10 bg-[var(--box-line)]" />
+            End of {key}
+            <span className="h-px w-10 bg-[var(--box-line)]" />
+          </div>
+        )}
       </div>
+      {/* one ayah at a time: the scrolling stops where the ayah ends (a long one is read down to its
+          end, and only a further swipe takes the reader on to the next) */}
+      {one && <span className="ayah-end-stop" aria-hidden />}
       {/* the one-ayah view keeps one set of buttons still in the frame's corner (Read); here, halfway
           down the ayah and its translation (below the number, above the bottom padding) */}
       {!one && (
