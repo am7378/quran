@@ -10,7 +10,8 @@ export const SurahArt = memo(function SurahArt({ n, blur = 9, className }: { n: 
   const t = themeOf(n);
   return (
     <div className={cn("surah-art absolute inset-0 overflow-hidden", className)} aria-hidden>
-      <div className="absolute -inset-[12%]" style={{ filter: `blur(${blur}px) saturate(1.15)` }}>
+      {/* (a theme may tone the art too: --art-tone, index.css) */}
+      <div className="absolute -inset-[12%]" style={{ filter: `blur(${blur}px) saturate(1.15) var(--art-tone, saturate(1))` }}>
         <MotifArt motif={t.m} p={t.p} seed={n} />
       </div>
       {/* legibility veil + grain */}

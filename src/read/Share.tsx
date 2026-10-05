@@ -656,6 +656,107 @@ const lunar: Look = (() => {
   };
 })();
 
+/* Royal: a dusk in royal blue printed on black, the range of mountains black across it, every
+   letter blue (the Arabic palest); the reference a specimen's row of captions, in italics */
+const royal: Look = (() => {
+  const geo = (k: Ctx) => {
+    const i = Math.round(k.S * 0.035);
+    return { x0: i, y0: i, x1: k.W - i, horizon: k.H * (k.format === "story" ? 0.6 : 0.66) };
+  };
+  return {
+    fonts: ['400 40px "Noto Serif Variable"', 'italic 400 24px "Noto Serif Variable"', '400 24px "Marks Serif"'],
+    ar: "#b2c1fd",
+    tr: "#7d9bf7",
+    trFont: (px: number) => `400 ${Math.round(px * 0.95)}px "Noto Serif Variable", "Marks Serif", serif`,
+    paint(g: CanvasRenderingContext2D, k: Ctx) {
+      const { W, H, S } = k;
+      const { x0, y0, x1, horizon } = geo(k);
+      g.fillStyle = "#000";
+      g.fillRect(0, 0, W, H);
+      g.save();
+      g.beginPath();
+      g.rect(x0, y0, x1 - x0, H - y0);
+      g.clip();
+      // the dusk: near black overhead, royal blue low on the sky
+      const sky = g.createLinearGradient(0, y0, 0, horizon);
+      sky.addColorStop(0, "#010309");
+      sky.addColorStop(0.6, "#061243");
+      sky.addColorStop(1, "#0d2272");
+      g.fillStyle = sky;
+      g.fillRect(x0, y0, x1 - x0, horizon - y0 + 2);
+      glowAt(g, k, W * 0.6, horizon, S * 0.55, "rgba(45,85,225,0.22)");
+      // long dark bands of cloud
+      const rnd = seeded(k.seed + 21);
+      for (let i = 0; i < 9; i++) {
+        const cy = y0 + (horizon - y0) * (0.18 + rnd() * 0.7);
+        const hh = S * (0.012 + rnd() * 0.03);
+        // a long ellipse, soft at its ends as well as above and below
+        const cx = x0 + rnd() * (x1 - x0), cw = W * (0.35 + rnd() * 0.5);
+        const soft = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+        soft.addColorStop(0, `rgba(1,3,14,${0.3 + rnd() * 0.3})`);
+        soft.addColorStop(0.55, "rgba(1,3,14,0.18)");
+        soft.addColorStop(1, "rgba(1,3,14,0)");
+        g.save();
+        g.translate(cx, cy);
+        g.scale(cw / 2, hh);
+        g.fillStyle = soft;
+        g.beginPath();
+        g.arc(0, 0, 1, 0, Math.PI * 2);
+        g.fill();
+        g.restore();
+      }
+      // the range: one peak right of the middle, lower ridges either side, black
+      g.fillStyle = "#010208";
+      g.beginPath();
+      g.moveTo(x0, H);
+      // as the sky behind the reader (skies.tsx): a sharp summit whose flanks fall steeply then
+      // ease, lower ridges either side, the edge rough with rock, rougher toward the top
+      const jag = seeded(k.seed + 5);
+      const knots = Array.from({ length: 12 }, () => jag() - 0.5);
+      const fine = Array.from({ length: 70 }, () => jag() - 0.5);
+      const noise = (a: number[], t: number) => {
+        const f = t * (a.length - 1), i = Math.min(a.length - 2, Math.floor(f)), u = f - i;
+        return a[i] + (a[i + 1] - a[i]) * u * u * (3 - 2 * u);
+      };
+      const steps = Math.ceil((x1 - x0) / (S * 0.003));
+      for (let j = 0; j <= steps; j++) {
+        const t = j / steps, x = x0 + (x1 - x0) * t;
+        const d = Math.abs(x - W * 0.6) / W;
+        const peak = 0.17 * Math.exp(-d * 9) + 0.05 * Math.exp(-d * 2.6);
+        const side = 0.05 * Math.exp(-Math.abs(x - W * 0.14) / W * 5) + 0.03 * Math.exp(-Math.abs(x - W * 0.9) / W * 6);
+        const rock = noise(knots, t) * (0.03 + peak * 0.22) + noise(fine, t) * 0.007 + (jag() - 0.5) * 0.0025;
+        g.lineTo(x, horizon - S * (0.02 + peak + side + rock));
+      }
+      g.lineTo(x1, H);
+      g.closePath();
+      g.fill();
+      g.restore();
+      grainOn(g, k, 0.6);
+      return { top: y0 + S * 0.07, bottom: H - k.fs * 5.4, padX: W * (k.format === "landscape" ? 0.12 : 0.13) };
+    },
+    rule(g: CanvasRenderingContext2D, x: number, y: number) {
+      g.strokeStyle = "rgba(65,105,225,0.9)";
+      g.lineWidth = 2;
+      line(g, x - 28, y, x + 28, y);
+    },
+    reference(g: CanvasRenderingContext2D, k: Ctx, name: string, ref: string) {
+      const y = k.H - k.m - k.fs * 1.7;
+      const pad = k.S * 0.065;
+      g.strokeStyle = "rgba(65,105,225,0.4)";
+      g.lineWidth = 1.5;
+      line(g, pad, y - k.fs * 1.5, k.W - pad, y - k.fs * 1.5);
+      g.textBaseline = "middle";
+      g.fillStyle = "#4169e1";
+      g.font = `italic 400 ${Math.round(k.fs * 1.3)}px "Noto Serif Variable", "Marks Serif", serif`;
+      spacing(g, 0);
+      g.textAlign = "left";
+      g.fillText(`(${name})`, pad, y);
+      g.textAlign = "right";
+      g.fillText(ref, k.W - pad, y);
+    },
+  };
+})();
+
 function lookOf(theme: ThemeId | undefined, box: "night" | "paper" | undefined, sky?: "dark" | "light"): Look {
   switch (theme) {
     case "mono":
@@ -668,6 +769,8 @@ function lookOf(theme: ThemeId | undefined, box: "night" | "paper" | undefined, 
       return paper;
     case "lunar":
       return lunar;
+    case "royal":
+      return royal;
     default:
       return classic;
   }

@@ -1748,7 +1748,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
         aria-hidden={focus || undefined}
       >
         <span className="label-sm min-w-0 truncate text-[var(--box-faint)]">
-          {verse ? `juz ${verse.j} · ` : ""}
+          {verse ? `Juz ${verse.j} · ` : ""}
           {surah.place === "makkah" ? "Makkan" : "Madinan"} · {surah.count} ayat
         </span>
         {showCtx && (
@@ -1842,6 +1842,15 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
           <div className={cn("absolute inset-0 transition-[opacity,visibility] duration-500", focus &&"pointer-events-none invisible opacity-0")}>
                 {/* the ayah's theme: one ayah at a time, with its translation showing (not the Arabic alone,
                     not scrolling freely; a book of the translation has its headings in the text) */}
+                {/* Royal: the surah's measure in a specimen's row of captions, above its theme */}
+                {settings.theme === "royal" && !mobile && data && data.v.length > 0 && (
+                  <div className="spec-row pointer-events-none absolute inset-x-0 bottom-full mb-[54px]" aria-hidden>
+                    <span>(surah {surahN})</span>
+                    <span>{surah.place === "makkah" ? "Makkan" : "Madinan"}</span>
+                    <span>{surah.count} ayat</span>
+                    <span>{data.v[0].j === data.v[data.v.length - 1].j ? `Juz ${data.v[0].j}` : `Juz ${data.v[0].j}–${data.v[data.v.length - 1].j}`}</span>
+                  </div>
+                )}
                 <AnimatePresence mode="wait">
                   {settings.view === 1 && settings.readingMode !== "arabic" && theme && active >= 1 && !panel && !aboutOpen && (
                     <motion.div

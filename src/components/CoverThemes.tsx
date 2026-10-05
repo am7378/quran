@@ -33,7 +33,7 @@ export function CoverThemes({ show, mobile }: { show: boolean; mobile: boolean }
                   aria-label={`${t.name}: ${t.line}`}
                   title={`${t.name} · ${t.line}`}
                   onClick={() => set({ theme: t.id })}
-                  className="group flex w-[calc((100vw-2rem-1.875rem)/6)] max-w-[58px] flex-col items-center gap-1.5 md:w-[66px] md:max-w-none"
+                  className="group flex w-[calc((100vw-2rem-2.25rem)/7)] max-w-[56px] flex-col items-center gap-1.5 md:w-[66px] md:max-w-none"
                 >
                   <span
                     className={cn(
@@ -49,7 +49,7 @@ export function CoverThemes({ show, mobile }: { show: boolean; mobile: boolean }
                       <span className="mx-auto mt-[38%] block h-[2px] w-[40%]" style={{ background: t.preview.ac }} />
                     </span>
                   </span>
-                  <span className={cn("flex h-3.5 items-center text-[10.5px] leading-none whitespace-nowrap transition-colors", on ? "text-[var(--outside-fg)]" : "text-[var(--outside-muted)]")} style={t.face}>{t.name}</span>
+                  <span className={cn("flex h-3.5 items-center text-[9px] leading-none whitespace-nowrap transition-colors md:text-[10.5px]", on ? "text-[var(--outside-fg)]" : "text-[var(--outside-muted)]")} style={t.face}>{t.name}</span>
                 </button>
               );
             })}

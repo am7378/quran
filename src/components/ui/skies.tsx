@@ -169,6 +169,49 @@ void main() {
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }`;
 
+/** Royal: a dusk in deep royal blue over a range of mountains, one peak a little right of the middle,
+ *  long dark clouds drifting across it; the picture set on black like a print on a sheet (its edges
+ *  on a wide screen), the ground below the range black. */
+const ROYAL = `
+void main() {
+  vec2 uv = gl_FragCoord.xy / r;
+  vec2 p = (gl_FragCoord.xy - 0.5 * r) / min(r.x, r.y);
+  float tt = t * 0.006;
+  float port = smoothstep(1.1, 1.6, r.y / r.x);
+  float y = uv.y;
+  // the horizon low on the sky (lower still on a tall phone, where the frame covers the middle)
+  float hz = mix(0.3, 0.14, port);
+  // the dusk: near black overhead, deepening to royal blue toward the horizon
+  vec3 col = mix(vec3(0.07, 0.12, 0.42), vec3(0.025, 0.05, 0.19), smoothstep(hz, hz + 0.38, y));
+  col = mix(col, vec3(0.006, 0.01, 0.04), smoothstep(hz + 0.3, 1.02, y));
+  // the last light, low behind the peak, fading away from it
+  float px = mix(0.36, 0.12, port);
+  float g = (y - hz) * 3.4;
+  col += vec3(0.035, 0.075, 0.26) * exp(-g * g) * (0.25 + 0.75 * exp(-abs(p.x - px) * 1.6));
+  // clouds: long dark bands, drifting; a faint lit edge here and there
+  vec2 q = vec2(p.x * 0.85 + tt, (y - hz) * 3.0);
+  float c = fbm(q * 1.35 + vec2(0.0, fbm(q * 0.6 + 3.0) * 0.8));
+  float c2 = fbm(q * 2.4 - vec2(tt * 1.7, 0.0) + 11.0);
+  float above = smoothstep(hz + 0.02, hz + 0.16, y);
+  col *= 1.0 - 0.62 * smoothstep(0.44, 0.78, c) * above;
+  col += vec3(0.025, 0.05, 0.17) * smoothstep(0.58, 0.82, c2) * above * (1.0 - smoothstep(0.7, 1.0, y));
+  // the range, black: one sharp peak (its flanks falling away steeply, then easing), lower ridges
+  // either side, the edge rough with rock, rougher toward the summit
+  float d = abs(p.x - px);
+  float peak = 0.15 * exp(-d * 5.2) + 0.05 * exp(-d * 1.6);
+  float side = 0.045 * exp(-abs(p.x + 0.58) * 3.4) + 0.03 * exp(-abs(p.x - 0.85) * 3.0);
+  float rock = (fbm(vec2(p.x * 3.4, 1.7)) - 0.5) * (0.05 + peak * 0.5) + (fbm(vec2(p.x * 16.0, 7.3)) - 0.5) * 0.018 + (n(vec2(p.x * 60.0, 2.0)) - 0.5) * 0.004;
+  float ridge = hz + 0.02 + (peak + side) * mix(1.0, 0.85, port) + rock;
+  float m = smoothstep(ridge + 0.0015, ridge - 0.0015, y);
+  col = mix(col, vec3(0.003, 0.004, 0.012), m);
+  // the print's edges: top and sides, on a wide screen
+  float inset = 0.028 * (1.0 - port);
+  vec2 e = vec2(min(gl_FragCoord.x, r.x - gl_FragCoord.x), r.y - gl_FragCoord.y) / min(r.x, r.y);
+  col *= step(inset, e.x) * step(inset, e.y);
+  col += (grain(gl_FragCoord.xy + floor(t * 12.0) * 7.0) - 0.5) * 0.028;
+  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+}`;
+
 /** `still`: hold the sky where it is (focus mode, when the frame covers the whole screen and the
  *  sky would only be drawn unseen); it takes up again from the same moment. */
 function ShaderSky({ main, className, still }: { main: string; className?: string; still?: boolean }) {
@@ -265,4 +308,5 @@ type SkyProps = { className?: string; still?: boolean };
 export const AtlasSky = (p: SkyProps) => <ShaderSky main={ATLAS} {...p} />;
 export const FolioSky = (p: SkyProps) => <ShaderSky main={FOLIO} {...p} />;
 export const LunarSky = (p: SkyProps) => <ShaderSky main={LUNAR} {...p} />;
+export const RoyalSky = (p: SkyProps) => <ShaderSky main={ROYAL} {...p} />;
 export const PaperSky = (p: SkyProps) => <ShaderSky main={PAPER} {...p} />;

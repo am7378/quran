@@ -30,6 +30,10 @@ import "@fontsource/spectral/300.css";
 import "@fontsource/spectral/300-italic.css";
 import "@fontsource/spectral/400.css";
 import "@fontsource/spectral/500.css";
+// Royal: a tall narrow serif for names, its text cut for reading (both with a width axis)
+import "@fontsource-variable/noto-serif-display/wdth.css";
+import "@fontsource-variable/noto-serif/wdth.css";
+import "@fontsource-variable/noto-serif/wdth-italic.css";
 import "@fontsource/courier-prime/400.css";
 import "@fontsource/courier-prime/700.css";
 import "./index.css";

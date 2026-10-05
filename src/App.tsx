@@ -5,6 +5,7 @@ import { Frame } from "@/components/Frame";
 import { Grain } from "@/components/bits";
 import { ContextMenu } from "@/components/ContextMenu";
 import { CoverThemes } from "@/components/CoverThemes";
+import { CoverSpec } from "@/components/SpecRow";
 import { Intro } from "@/pages/Intro";
 import { Select, type OpenRequest } from "@/pages/Select";
 import { Read } from "@/read/Read";
@@ -263,6 +264,8 @@ export default function App() {
       </Frame>
 
       <CoverThemes show={cover && !coverSearch} mobile={vp.mobile} />
+      {/* Royal: the cover's row of captions, as on a colour's specimen sheet */}
+      <CoverSpec show={settings.theme === "royal" && cover && !coverSearch && !vp.mobile} surahs={index?.surahs ?? []} juz={index?.juz ?? {}} />
       <ContextMenu />
       {/* Paper draws its icons in ink: the line a little uneven, as by a pen */}
       <svg width="0" height="0" className="absolute" aria-hidden>
