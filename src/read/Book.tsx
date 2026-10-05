@@ -64,7 +64,7 @@ export const BookText = memo(function BookText({
                 })}
               </p>
             ) : (
-              <p className="book-tr text-start font-serif text-[var(--box-fg)] md:text-justify" dir="ltr" lang="en" style={{ fontSize: trPx, lineHeight: 1.8 }}>
+              <p className="book-tr text-start font-serif text-[var(--box-fg)] md:text-justify" dir="ltr" lang="en" style={{ fontSize: `calc(${trPx}px * var(--read-scale, 1))`, lineHeight: 1.8 }}>
                 {p.verses.map((v, vi) => {
                   const key = `${surah}:${v.n}`;
                   const tr = translationPieces(v, settings.translation);

@@ -1,5 +1,5 @@
 import { animate, AnimatePresence, motion, useIsPresent, useMotionValue } from "framer-motion";
-import { Copy, Mic, Pause, Play, StickyNote, Trash2, X } from "lucide-react";
+import { Copy, Mic, Pause, Play, Share2, StickyNote, Trash2, X } from "lucide-react";
 import { del, get } from "idb-keyval";
 import { voiceKey } from "./VoiceNote";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -191,6 +191,7 @@ export function HighlightMenu({
   onCopy,
   onNote,
   onVoice,
+  onShare,
 }: {
   hl: Highlight | null;
   at: { x: number; y: number; bottom: number; below?: boolean } | null;
@@ -198,6 +199,7 @@ export function HighlightMenu({
   onCopy: (h: Highlight) => void;
   onNote: (h: Highlight) => void;
   onVoice: (h: Highlight, anchor: DOMRect) => void;
+  onShare: (h: Highlight) => void;
 }) {
   const update = useStore((s) => s.updateHighlight);
   const remove = useStore((s) => s.removeHighlight);
@@ -261,6 +263,9 @@ export function HighlightMenu({
             <span className="mx-1 h-5 w-px bg-[var(--box-line)]" />
             <MenuBtn label="Copy highlighted text" onClick={() => onCopy(hl)}>
               <Copy size={14} strokeWidth={1.6} />
+            </MenuBtn>
+            <MenuBtn label="Share this part as an image" onClick={() => onShare(hl)}>
+              <Share2 size={14} strokeWidth={1.6} />
             </MenuBtn>
             <MenuBtn label="Add a note to this highlight" onClick={() => onNote(hl)}>
               <StickyNote size={14} strokeWidth={1.6} />
@@ -463,6 +468,7 @@ function NoteCard({ note, autoFocus, onFocused }: { note: Note; autoFocus: boole
 
   return (
     <motion.div
+      data-note-card={note.id}
       className="pointer-events-auto absolute left-0 top-0 touch-none"
       style={{ left: L, top: T, width: w, height: h, perspective: 800 }}
       onPointerDown={onPointerDown}

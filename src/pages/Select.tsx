@@ -13,7 +13,7 @@ import type { Result } from "@/lib/search";
 import type { Rect } from "@/lib/layout";
 import { isLongPressMenu } from "@/lib/touch";
 import { EASE_OUT, clamp, cn } from "@/lib/utils";
-import { useUI } from "@/lib/ui";
+import { useUI, type MenuItem } from "@/lib/ui";
 import { SettingsGlyph } from "@/components/ImmersivePanel";
 
 const COUNT = 114;
@@ -95,6 +95,11 @@ export function Select({
   const stageH = mobile ? H * 0.56 : H;
   const top = mobile ? 52 : 0;
   const cardW = mobile ? clamp(Math.min(W * 0.36, stageH * 0.46), 104, 150) : clamp(H * 0.3, 118, 178);
+  // "Continue", on a phone: at the foot, under the slider, where there is room for it (the search,
+  // the slider and their gaps end about 207px below the ring's stage); on a small phone, a line
+  // under "Surahs" instead
+  const resumable = !!(resume && surahs[resume.s - 1]);
+  const resumeAtFoot = !mobile || H * 0.44 - 207 >= 56;
   const g: ReelGeometry = {
     cx: 0,
     cy: mobile ? (top + stageH - 40) / 2 : stageH / 2,
@@ -158,23 +163,38 @@ export function Select({
     previewTimer.current = window.setTimeout(() => turnTo(s.n), 280);
   };
 
+  // the right-click menu: the surah under the pointer (a card of the ring, a line of a list), then the index's own things
   const onContextMenu = (e: React.MouseEvent) => {
-    if (isLongPressMenu(e.nativeEvent) || (e.target as HTMLElement).closest("input, textarea")) return;
+    const t = e.target as HTMLElement;
+    if (isLongPressMenu(e.nativeEvent) || t.closest("input, textarea")) return;
     e.preventDefault();
-    const cur = surahs[mod(Math.round(pos.get()), COUNT)];
-    const card = (e.target as HTMLElement).closest<HTMLElement>("[data-abs]");
-    const under = card ? surahs[mod(Number(card.dataset.abs), COUNT)] : null;
-    useUI.getState().openMenu(e.clientX, e.clientY, [
-      { type: "label", label: (under ?? cur).tc },
-      under && under.n !== cur.n
-        ? { type: "item", label: `Bring ${under.tc} forward`, onSelect: () => turnTo(under.n) }
-        : { type: "item", label: `Open at ayah ${ayah}`, hint: "Enter", onSelect: () => openFront() },
-      ...(under && under.n !== cur.n ? [{ type: "item" as const, label: `Open ${under.tc}`, onSelect: () => turnTo(under.n, () => setTimeout(() => openFront(1), 160)) }] : []),
-      { type: "sep" },
-      { type: "item", label: "Next surah", hint: "↓", onSelect: () => turnTo((cur.n % 114) + 1) },
-      { type: "item", label: "Previous surah", hint: "↑", onSelect: () => turnTo(((cur.n + 112) % 114) + 1) },
-      { type: "item", label: "Search", onSelect: () => rootRef.current?.querySelector<HTMLInputElement>("input")?.focus() },
-    ]);
+    const items: MenuItem[] = [];
+    if (ring) {
+      const cur = surahs[mod(Math.round(pos.get()), COUNT)];
+      const card = t.closest<HTMLElement>("[data-abs]");
+      const under = card ? surahs[mod(Number(card.dataset.abs), COUNT)] : null;
+      items.push({ type: "label", label: (under ?? cur).tc });
+      if (under && under.n !== cur.n) {
+        items.push({ type: "item", label: `Bring it forward`, onSelect: () => turnTo(under.n) });
+        items.push({ type: "item", label: `Open ${under.tc}`, onSelect: () => turnTo(under.n, () => setTimeout(() => openFront(1), 160)) });
+      } else items.push({ type: "item", label: `Open at ayah ${ayah}`, hint: "Enter", onSelect: () => openFront() });
+      items.push({ type: "sep" });
+      items.push({ type: "item", label: "Next surah", hint: "↓", onSelect: () => turnTo((cur.n % 114) + 1) });
+      items.push({ type: "item", label: "Previous surah", hint: "↑", onSelect: () => turnTo(((cur.n + 112) % 114) + 1) });
+      items.push({ type: "item", label: "Search", onSelect: () => rootRef.current?.querySelector<HTMLInputElement>("input")?.focus() });
+    } else {
+      const line = t.closest<HTMLElement>("[data-index-list] button");
+      if (line) {
+        items.push({ type: "item", label: "Open", onSelect: () => line.click() });
+        items.push({ type: "sep" });
+      }
+      items.push({ type: "item", label: "All surahs", onSelect: () => setView("ring") });
+    }
+    if (resume && surahs[resume.s - 1]) items.push({ type: "item", label: `Continue · ${surahs[resume.s - 1].tc} ${resume.s}:${resume.v}`, onSelect: () => onOpen({ surah: resume.s, ayah: resume.v }) });
+    items.push({ type: "sep" });
+    items.push({ type: "item", label: "Settings", onSelect: onSettings });
+    items.push({ type: "item", label: "About this reader", onSelect: () => useUI.getState().setAbout(true) });
+    useUI.getState().openMenu(e.clientX, e.clientY, items);
   };
 
   const colCenter = mobile ? W / 2 : (W * 2) / 3;
@@ -194,7 +214,13 @@ export function Select({
       <div className="absolute inset-x-0 top-0 z-40 flex items-start justify-between px-5 pt-4 md:px-7 md:pt-5">
         <div className="relative">
           <ViewPicker view={view} onChange={setView} />
-          <div className="label mt-1 text-[var(--box-faint)]">{ring ? `[${pad3(front + 1)} / 114]` : INDEX_VIEWS.find((v) => v.id === view)?.line}</div>
+          {ring && resumable && !resumeAtFoot ? (
+            <button type="button" onClick={() => onOpen({ surah: resume!.s, ayah: resume!.v })} className="label mt-1 flex items-center gap-1.5 text-[var(--box-muted)] transition-colors hover:text-[var(--box-fg)]">
+              Continue {resume!.s}:{resume!.v} <span aria-hidden>→</span>
+            </button>
+          ) : (
+            <div className="label mt-1 text-[var(--box-faint)]">{ring ? `[${pad3(front + 1)} / 114]` : INDEX_VIEWS.find((v) => v.id === view)?.line}</div>
+          )}
         </div>
         <div className="flex h-[22px] items-center gap-3">
           <BracketButton onClick={() => useUI.getState().setAbout(true)} title="About this reader">
@@ -214,12 +240,12 @@ export function Select({
       </div>
 
       {/* where the reader left off last time, one tap away */}
-      {ring && resume && surahs[resume.s - 1] && (
+      {ring && resume && resumable && resumeAtFoot && (
         <motion.div
-          className={cn("pointer-events-none absolute inset-x-0 z-30 flex", mobile ? "justify-end px-5" : "justify-center px-24")}
-          // on a phone the top row is full: just under it, on the side clear of the ring
-          style={{ top: mobile ? 50 : 18 }}
-          initial={{ opacity: 0, y: -8 }}
+          className={cn("pointer-events-none absolute inset-x-0 z-30 flex", mobile ? "justify-center px-5" : "justify-center px-24")}
+          // on a phone the top row is full and the ring rises to it: at the foot instead, under the slider
+          style={mobile ? { bottom: 14 } : { top: 18 }}
+          initial={{ opacity: 0, y: mobile ? 8 : -8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.55, duration: 0.6, ease: EASE_OUT }}
         >
@@ -251,7 +277,9 @@ export function Select({
             exit={{ opacity: 0, y: -8, transition: { duration: 0.18 } }}
             transition={{ duration: 0.45, ease: EASE_OUT }}
           >
-            <IndexView kind={view} surahs={surahs} juz={juz} onOpen={(s, a) => onOpen({ surah: s, ayah: a })} mobile={mobile} />
+            <div data-index-list className="h-full">
+              <IndexView kind={view} surahs={surahs} juz={juz} onOpen={(s, a) => onOpen({ surah: s, ayah: a })} mobile={mobile} />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

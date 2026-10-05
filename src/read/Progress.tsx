@@ -7,7 +7,9 @@ import { pad3 } from "@/lib/data";
 import { HIGHLIGHT_COLORS, HIGHLIGHT_HEX, useStore, type Goal, type Highlight, type Note, type Reflection } from "@/lib/store";
 import { sfx } from "@/lib/sound";
 import { EASE_OUT, cn } from "@/lib/utils";
+import { Segmented } from "@/components/ui/segmented";
 import { voiceKey } from "./VoiceNote";
+import { QuillGlyph } from "@/components/glyphs";
 
 /**
  * Progress, as the reader marks it: a surah is completed when they tick it, at its end or here.
@@ -355,7 +357,7 @@ function KeptRow({ surah, kept, done, onOpen }: { surah: Surah; kept: Kept; done
         {kept.notes.length > 0 && <Count icon={<StickyNote size={12} strokeWidth={1.6} />} n={kept.notes.length} what="note" />}
         {kept.voice.length > 0 && <Count icon={<Mic size={12} strokeWidth={1.6} />} n={kept.voice.length} what="voice note" />}
         {kept.marks.length > 0 && <Count icon={<Bookmark size={12} strokeWidth={1.6} />} n={kept.marks.length} what="bookmark" />}
-        {kept.reflection && <span title="Your reflection"><NotebookPen size={12} strokeWidth={1.6} /></span>}
+        {kept.reflection && <span title="Your reflection"><QuillGlyph size={13} /></span>}
         <span className={cn("flex h-4 w-4 items-center justify-center rounded-full border", done ? "border-[var(--box-fg)] bg-[var(--box-fg)] text-[var(--box-bg-solid)]" : "border-[var(--box-line)] text-transparent")} title={done ? "Completed" : "Not completed yet"}>
           <Check size={10} strokeWidth={2.6} />
         </span>
@@ -663,21 +665,14 @@ function GoalEditor({ goal, onSave, onCancel }: { goal: Goal | null; onSave: (g:
   const [count, setCount] = useState(goal && goal.kind !== "khatm" ? goal.count : 2);
   const [by, setBy] = useState(goal?.kind === "khatm" ? goal.by : plusMonths(6));
   const today = new Date().toISOString().slice(0, 10);
-  const choices: [Goal["kind"], string][] = [
-    ["week", "Each week"],
-    ["month", "Each month"],
-    ["khatm", "Whole Qur'an"],
+  const choices: [Goal["kind"], string, string][] = [
+    ["week", "Each week", "Week"],
+    ["month", "Each month", "Month"],
+    ["khatm", "Whole Qur'an", "Qur'an"],
   ];
   return (
     <div className="mt-3 flex flex-col gap-4">
-      <div className="pill flex w-max max-w-full flex-wrap border border-[var(--box-line)] p-0.5">
-        {choices.map(([k, l]) => (
-          <button key={k} type="button" onClick={() => setKind(k)} aria-pressed={kind === k} className={cn("label relative px-3 py-2 transition-colors", kind === k ? "text-[var(--panel-bg)]" : "text-[var(--box-muted)] hover:text-[var(--box-fg)]")}>
-            {kind === k && <motion.span layoutId="goal-kind" className="pill absolute inset-0 bg-[var(--box-fg)]" transition={{ duration: 0.3, ease: EASE_OUT }} />}
-            <span className="relative">{l}</span>
-          </button>
-        ))}
-      </div>
+      <Segmented value={kind} onChange={setKind} options={choices} />
       {kind === "khatm" ? (
         <label className="flex flex-wrap items-center gap-3 font-serif text-[17px]">
           Complete all 114 surahs by

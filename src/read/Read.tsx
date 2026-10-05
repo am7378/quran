@@ -16,10 +16,17 @@ import {
   Rows3,
   RectangleHorizontal,
   BookOpen,
-  PenLine,
-  NotebookPen,
   Maximize2,
   Minimize2,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  CornerDownRight,
+  Pause,
+  Play,
+  Trash2,
+  Volume2,
+  X as XIcon,
 } from "lucide-react";
 import { Actions, AyahSection, ContextToggle, type AyahAction } from "./Ayah";
 import { HONORIFICS, glossByTerm, glossFor, loadGlossary } from "./terms";
@@ -28,6 +35,7 @@ import { ReflectionPanel } from "./Reflection";
 import { SettingsPanel } from "./Settings";
 import { SurahSummary } from "./Summary";
 import { ShareDialog, type ShareContent } from "./Share";
+import { arabicFor, translationFor } from "./align";
 import { NoteShareDialog } from "./NoteShare";
 import { BookText } from "./Book";
 import { VoiceRecorder } from "./VoiceNote";
@@ -37,7 +45,8 @@ import { SurahArt } from "@/components/SurahCard";
 import { SearchBox } from "@/components/SearchBox";
 import { ImmersivePanel, MenuGlyph, Reveal, SettingsGlyph } from "@/components/ImmersivePanel";
 import { BracketButton } from "@/components/bits";
-import { arabicText, loadSurah, pad3, translationText, type Surah, type SurahData, type Verse } from "@/lib/data";
+import { QuillGlyph } from "@/components/glyphs";
+import { arabicText, loadSurah, pad3, spellHonorifics, translationText, type Surah, type SurahData, type Verse } from "@/lib/data";
 import { useStore, type Highlight, type HighlightField, type Settings } from "@/lib/store";
 import { flipAngle, holdFlip, settleFlip, useUI, type MenuItem } from "@/lib/ui";
 import { playHighlight, strokeEnd, strokeMove, strokeRecently } from "@/lib/sound";
@@ -693,6 +702,38 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     [settings.translation, settings.script, settings.theme, settings.boxTheme, settings.monoCard, settings.monoSky, surah, surahN],
   );
 
+  // a part of an ayah (a highlight): the part, with the other side's words to choose from (Share.tsx)
+  const openSharePart = useCallback(
+    (h: Highlight) => {
+      const n = Number(h.key.split(":")[1]);
+      const v = data?.v[n - 1];
+      if (!v) return;
+      const tr = h.field === "ar" ? settings.translation : h.field;
+      const whole = translationText(v, tr, false);
+      const trWords = whole.split(/\s+/).filter(Boolean);
+      const aw = arabicWords(v, settings.script);
+      const base = {
+        surahName: surah.tc,
+        ref: `${surahN}:${n}`,
+        url: `${location.origin}${location.pathname}#/${surahN}/${n}`,
+        surah: surahN,
+        script: settings.script,
+        theme: settings.theme,
+        box: settings.theme === "mono" ? (settings.monoCard === "light" ? "paper" : "night") : settings.boxTheme,
+        sky: settings.monoSky,
+      } as const;
+      if (h.field === "ar") {
+        const idx = aw.words.filter((w) => w.start >= h.start && w.end <= h.end).map((w) => w.i);
+        if (!idx.length) return;
+        const span: [number, number] = [Math.min(...idx), Math.max(...idx)];
+        setShare({ ...base, arabic: h.text, translation: whole, part: { side: "ar", other: trWords, guess: translationFor(v.m, span, trWords) } });
+      } else {
+        setShare({ ...base, arabic: arabicText(v, settings.script), translation: spellHonorifics(h.text), part: { side: "tr", other: aw.words.map((w) => w.text), guess: arabicFor(v.m, h.text) } });
+      }
+    },
+    [data, settings.translation, settings.script, settings.theme, settings.boxTheme, settings.monoCard, settings.monoSky, surah, surahN],
+  );
+
   // one function for the life of the reader, so the ayahs (memoised) don't redraw each time it would change
   const actionImpl = useRef<(a: AyahAction, v: Verse, anchor?: HTMLElement) => void>(() => {});
   const onAction = useCallback((a: AyahAction, v: Verse, anchor?: HTMLElement) => actionImpl.current(a, v, anchor), []);
@@ -1141,34 +1182,95 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [menu?.id]);
 
-  /* ── the site's own right-click menu ────────────────────────── */
+  /* ── the site's own right-click menu: what is under the pointer decides what it offers ─────
+     (a note, something open over the page, a highlight, a word, an ayah, the surah's opening or
+     closing page; the surah's own things after, unless the menu is already about something small) */
   const onContextMenu = (e: React.MouseEvent) => {
     const t = e.target as HTMLElement;
     if (t.closest("input, textarea")) return; // keep the browser's menu where people type
     if (isLongPressMenu(e.nativeEvent)) return; // a long press is the phone selecting text
     e.preventDefault();
-    const sec = t.closest<HTMLElement>("section[data-key]");
-    const v = sec && data && Number(sec.dataset.n) >= 1 ? data.v[Number(sec.dataset.n) - 1] : null;
-    const sel = window.getSelection();
-    const selText = sel && !sel.isCollapsed && rootRef.current?.contains(sel.anchorNode) ? sel.toString().trim() : "";
     const I = (n: React.ReactNode) => n;
     const items: MenuItem[] = [];
-    if (selText) {
-      items.push({ type: "item", label: "Highlight selection", icon: I(<Highlighter size={14} />), onSelect: onSelectEnd });
-      items.push({ type: "item", label: "Copy selection", icon: I(<Copy size={14} />), onSelect: () => copyText(selText).then((ok) => ok && flash("Copied")) });
+    const show = () => openMenu(e.clientX, e.clientY, items);
+
+    // a note on the page: its own things
+    const noteEl = t.closest<HTMLElement>("[data-note-card]");
+    const note = noteEl ? useStore.getState().notes[noteEl.dataset.noteCard!] : null;
+    if (noteEl && note) {
+      const voice = note.kind === "voice";
+      const [ns, na] = note.key.split(":").map(Number);
+      const press = (label: string) => noteEl.querySelector<HTMLElement>(`[aria-label="${label}"]`)?.click();
+      items.push({ type: "label", label: `${voice ? "Voice note" : "Note"} on ${note.key}` });
+      if (note.docked) items.push({ type: "item", label: "Bring it back", icon: I(<CornerDownRight size={14} />), onSelect: () => noteEl.click() });
+      if (voice) {
+        const playing = !!noteEl.querySelector('[aria-label="Pause"]');
+        items.push({ type: "item", label: playing ? "Pause" : "Play", icon: I(playing ? <Pause size={14} /> : <Play size={14} />), onSelect: () => press(playing ? "Pause" : "Play") });
+      } else items.push({ type: "item", label: "Write in it", icon: I(<StickyNote size={14} />), onSelect: () => noteEl.querySelector("textarea")?.focus() });
+      items.push({ type: "item", label: "Share as an image", icon: I(<Share2 size={14} />), onSelect: () => useUI.getState().shareNote(note) });
+      if (!(ns === surahN && na === activeRef.current)) items.push({ type: "item", label: `Go to ayah ${note.key}`, icon: I(<CornerDownRight size={14} />), onSelect: () => go(ns, na) });
       items.push({ type: "sep" });
+      items.push({ type: "item", label: voice ? "Delete voice note" : "Delete note", icon: I(<Trash2 size={14} />), onSelect: () => press(voice ? "Delete voice note" : "Delete note") });
+      return show();
     }
-    if (v) {
+
+    // the highlight's colours and tools, or a word's meaning, open: only to close them
+    if (t.closest('[role="toolbar"][aria-label="Highlight"], [data-tip]')) {
+      items.push({
+        type: "item",
+        label: "Close",
+        hint: "Esc",
+        icon: I(<XIcon size={14} />),
+        onSelect: () => {
+          setMenu(null);
+          closeTip();
+        },
+      });
+      return show();
+    }
+
+    // something open over the page (a panel, the share window, an ayah opened beside): to close it
+    const dialog = t.closest<HTMLElement>('[role="dialog"]');
+    if (dialog) {
+      const name = dialog.getAttribute("aria-label") ?? "";
+      items.push({ type: "label", label: name });
+      const peek = useUI.getState().peek;
+      if (peek && /^Ayah \d/.test(name))
+        items.push({
+          type: "item",
+          label: `Go to ${peek.s}:${peek.a}`,
+          icon: I(<CornerDownRight size={14} />),
+          onSelect: () => {
+            useUI.getState().setPeek(null);
+            go(peek.s, peek.a);
+          },
+        });
+      items.push({
+        type: "item",
+        label: "Close",
+        hint: "Esc",
+        icon: I(<XIcon size={14} />),
+        onSelect: () => {
+          if (panel && dialog.getAttribute("aria-modal") === "true") return setPanel(null);
+          const close = dialog.querySelector<HTMLElement>('button[aria-label^="Close"]');
+          if (close) close.click();
+          else window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+        },
+      });
+      return show();
+    }
+
+    const sec = t.closest<HTMLElement>("section[data-n]");
+    const n = sec ? Number(sec.dataset.n) : NaN;
+    const v = data && n >= 1 && n <= surah.count ? data.v[n - 1] ?? null : null;
+    const sel = window.getSelection();
+    const selText = sel && !sel.isCollapsed && rootRef.current?.contains(sel.anchorNode) ? sel.toString().trim() : "";
+    const ayahItems = (v: Verse) => {
       const key = `${surahN}:${v.n}`;
       items.push({ type: "label", label: `Ayah ${key}` });
       items.push({ type: "item", label: "Copy ayah", icon: I(<Copy size={14} />), onSelect: () => onAction("copy", v) });
-      items.push({ type: "item", label: "Share as image…", icon: I(<Share2 size={14} />), onSelect: () => openShare(v) });
-      items.push({
-        type: "item",
-        label: bookmarks[key] ? "Remove bookmark" : "Bookmark",
-        icon: I(<Bookmark size={14} />),
-        onSelect: () => onAction("bookmark", v),
-      });
+      items.push({ type: "item", label: "Share as an image", icon: I(<Share2 size={14} />), onSelect: () => openShare(v) });
+      items.push({ type: "item", label: bookmarks[key] ? "Remove bookmark" : "Bookmark", icon: I(<Bookmark size={14} />), onSelect: () => onAction("bookmark", v) });
       items.push({ type: "item", label: "Write a note", icon: I(<StickyNote size={14} />), onSelect: () => onAction("note", v) });
       items.push({
         type: "item",
@@ -1176,29 +1278,92 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
         icon: I(<Mic size={14} />),
         onSelect: () => onAction("voice", v, sec?.querySelector<HTMLElement>('[aria-label="Record a voice note on this ayah"]') ?? sec ?? undefined),
       });
+    };
+
+    // words chosen with the mouse: what to do with them, and with their ayah
+    if (selText) {
+      items.push({ type: "item", label: "Highlight", icon: I(<Highlighter size={14} />), onSelect: onSelectEnd });
+      items.push({ type: "item", label: "Copy", icon: I(<Copy size={14} />), onSelect: () => copyText(selText).then((ok) => ok && flash("Copied")) });
+      if (v) {
+        items.push({ type: "sep" });
+        ayahItems(v);
+      }
+      return show();
+    }
+
+    // a highlight: its own tools, then its ayah's
+    const mark = t.closest<HTMLElement>("mark.hl");
+    const h = mark ? useStore.getState().highlights[mark.dataset.hid!] : null;
+    if (mark && h) {
+      items.push({ type: "label", label: "Highlight" });
+      items.push({ type: "item", label: "Colour…", icon: I(<Highlighter size={14} />), onSelect: () => openMenuFor(h.id, true) });
+      items.push({ type: "item", label: "Copy its words", icon: I(<Copy size={14} />), onSelect: () => copyText(`${h.text}\n— ${surah.tc} ${h.key}`).then((ok) => ok && flash("Highlight copied")) });
+      items.push({ type: "item", label: "Share this part", icon: I(<Share2 size={14} />), onSelect: () => openSharePart(h) });
+      items.push({ type: "item", label: "Add a note to it", icon: I(<StickyNote size={14} />), onSelect: () => newNote(h.key, { hid: h.id, quote: h.text }) });
+      items.push({ type: "item", label: "Record a voice note on it", icon: I(<Mic size={14} />), onSelect: () => setRecorder({ key: h.key, anchor: mark.getBoundingClientRect(), hid: h.id, quote: h.text }) });
+      items.push({ type: "item", label: "Remove", icon: I(<Trash2 size={14} />), onSelect: () => removeHighlight(h.id) });
+      if (v) {
+        items.push({ type: "sep" });
+        ayahItems(v);
+      }
+      return show();
+    }
+
+    // an Arabic word, or a term the translation explains: heard, or explained
+    const word = t.closest<HTMLElement>(".word");
+    const gl = t.closest<HTMLElement>(GLOSSED);
+    if (word) items.push({ type: "item", label: "Hear this word", icon: I(<Volume2 size={14} />), onSelect: () => word.click() });
+    else if (gl) items.push({ type: "item", label: `What “${(gl.textContent ?? "").trim().slice(0, 24)}” means`, icon: I(<BookOpen size={14} />), onSelect: () => showGloss(gl) });
+    if (word || gl) items.push({ type: "sep" });
+
+    if (v) {
+      ayahItems(v);
+      items.push({ type: "sep" });
+    } else if (sec && n === 0 && !flipped) {
+      // the surah's opening page
+      items.push({ type: "item", label: "Begin the surah", icon: I(<ArrowDown size={14} />), onSelect: () => scrollToAyah(1) });
+      items.push({ type: "sep" });
+    } else if (sec && n === surah.count + 1) {
+      // its closing page
+      const done = !!useStore.getState().done[surahN];
+      items.push({ type: "item", label: done ? "Completed · undo" : "Mark as completed", icon: I(<Check size={14} />), onSelect: () => sec.querySelector<HTMLElement>("button[aria-pressed]")?.click() });
+      const next = surahs[surahN];
+      if (next) items.push({ type: "item", label: `Next · ${next.tc}`, icon: I(<ArrowRight size={14} />), onSelect: () => go(surahN + 1, 0) });
       items.push({ type: "sep" });
     }
+
+    // the surah, and the reader around it
+    const inFocus = useUI.getState().focus;
     items.push({ type: "label", label: surah.tc });
-    items.push({ type: "item", label: "Surah summary", icon: I(<BookOpen size={14} />), onSelect: () => setFlipped(true) });
-    items.push({ type: "item", label: "Reflect on this surah", icon: I(<PenLine size={14} />), onSelect: () => setPanel("reflection") });
-    items.push({ type: "item", label: "Search", hint: "/", icon: I(<SearchIcon size={14} />), onSelect: () => setPanel("search") });
-    items.push({
-      type: "item",
-      label: settings.view === 1 ? "Show multiple ayahs" : "Show one ayah at a time",
-      icon: I(settings.view === 1 ? <Rows3 size={14} /> : <RectangleHorizontal size={14} />),
-      onSelect: () => switchView(settings.view === 1 ? 3 : 1),
-    });
-    if (settings.translation === "qme")
+    items.push(
+      flipped
+        ? { type: "item", label: "Back to the ayahs", icon: I(<BookOpen size={14} />), onSelect: () => setFlipped(false) }
+        : { type: "item", label: "Surah summary", icon: I(<BookOpen size={14} />), onSelect: () => setFlipped(true) },
+    );
+    items.push({ type: "item", label: "Reflect on this surah", icon: I(<QuillGlyph size={14} />), onSelect: () => setPanel("reflection") });
+    if (!flipped) {
       items.push({
         type: "item",
-        label: settings.showContext ? "Hide the bracketed context" : "Show the bracketed context",
-        icon: I(<span className="font-serif text-[13px] italic">( )</span>),
-        onSelect: toggleContext,
+        label: settings.view === 1 ? "Show multiple ayahs" : "Show one ayah at a time",
+        icon: I(settings.view === 1 ? <Rows3 size={14} /> : <RectangleHorizontal size={14} />),
+        onSelect: () => switchView(settings.view === 1 ? 3 : 1),
       });
+      if (settings.translation === "qme")
+        items.push({
+          type: "item",
+          label: settings.showContext ? "Hide the bracketed context" : "Show the bracketed context",
+          icon: I(<span className="font-serif text-[13px] italic">( )</span>),
+          onSelect: toggleContext,
+        });
+      items.push({ type: "item", label: inFocus ? "Leave focus" : "Focus", hint: "F", icon: I(inFocus ? <Minimize2 size={14} /> : <Maximize2 size={14} />), onSelect: () => enterFocus(!inFocus) });
+    }
     items.push({ type: "sep" });
-    items.push({ type: "item", label: "Settings", icon: I(<Settings2 size={14} />), onSelect: () => setPanel("settings") });
+    items.push({ type: "item", label: "Search", hint: "/", icon: I(<SearchIcon size={14} />), onSelect: () => setPanel("search") });
+    if (surahN > 1) items.push({ type: "item", label: `Previous · ${surahs[surahN - 2].tc}`, icon: I(<ArrowLeft size={14} />), onSelect: () => go(surahN - 1, 0) });
+    if (surahN < 114 && !(sec && n === surah.count + 1)) items.push({ type: "item", label: `Next · ${surahs[surahN].tc}`, icon: I(<ArrowRight size={14} />), onSelect: () => go(surahN + 1, 0) });
     items.push({ type: "item", label: "Surah index", icon: I(<LayoutGrid size={14} />), onSelect: () => onIndex(surahN, activeRef.current) });
-    openMenu(e.clientX, e.clientY, items);
+    items.push({ type: "item", label: "Settings", icon: I(<Settings2 size={14} />), onSelect: () => setPanel("settings") });
+    show();
   };
 
   /* ── turning the frame over with a finger (touch): a sideways swipe from either side of it.
@@ -1335,7 +1500,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       >
         <div className="flex min-w-0 items-baseline gap-2.5">
           {!mobile && <span className="font-mono text-[11px] text-[var(--box-faint)] tabular-nums">{pad3(surahN)}</span>}
-          <FitName text={surah.tc} className="-my-[0.15em] truncate py-[0.15em] font-serif text-[17px] italic leading-[1.1] md:text-[20px]" />
+          <FitName text={surah.tc} className="display -my-[0.15em] truncate py-[0.15em] font-serif text-[17px] italic leading-[1.1] md:text-[20px]" />
           {!mobile && <span className="label hidden min-w-0 shrink-[4] truncate text-[var(--box-faint)] lg:inline">{surah.en}</span>}
         </div>
         <div className="flex shrink-0 items-center">
@@ -1521,6 +1686,10 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
               setRecorder({ key: h.key, anchor, hid: h.id, quote: h.text });
               setMenu(null);
             }}
+            onShare={(h) => {
+              openSharePart(h);
+              setMenu(null);
+            }}
           />
           <StickyNotes notes={visibleNotes} focusId={focusNote} onFocused={() => setFocusNote(null)} />
           <FolderPop at={folderPop} bkey={folderPop?.key ?? null} onClose={closeFolderPop} />
@@ -1583,7 +1752,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
                       exit={{ opacity: 0, y: -6, filter: "blur(4px)", transition: { duration: 0.2 } }}
                       transition={{ duration: 0.5, ease: EASE_OUT }}
                     >
-                      <span className="theme-tag block truncate font-serif text-[17px] italic text-[var(--outside-fg)] md:text-[20px]">{theme}</span>
+                      <span className="theme-tag display block truncate font-serif text-[17px] italic text-[var(--outside-fg)] md:text-[20px]">{theme}</span>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1612,7 +1781,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
                     }}
                     onEnd={() => setPanel((p) => (p === "reflection" ? null : "reflection"))}
                     endLabel="Reflect on this surah — write or record your own summary"
-                    endIcon={<NotebookPen size={17} strokeWidth={1.6} />}
+                    endIcon={<QuillGlyph size={18} />}
                   />
                 </div>
           </div>,
@@ -1816,7 +1985,8 @@ function Closing({ surah, next, onReflect, onNext }: { surah: Surah; next: Surah
       <div className="display font-serif text-[26px] italic md:text-[34px]">What did this surah leave with you?</div>
       <CompleteMark surah={surah} />
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <button type="button" onClick={onReflect} className="btn-primary label border border-[var(--box-fg)] px-3 py-2 transition-colors hover:bg-[var(--box-fg)] hover:text-[var(--box-bg-solid)]">
+        <button type="button" onClick={onReflect} className="btn-primary label inline-flex items-center gap-2 border border-[var(--box-fg)] px-3 py-2 transition-colors hover:bg-[var(--box-fg)] hover:text-[var(--box-bg-solid)]">
+          <QuillGlyph size={14} />
           Write a reflection
         </button>
         {next && (
@@ -1879,6 +2049,9 @@ function ViewToggle({ settings, onView, onMode }: { settings: Settings; onView: 
               aria-expanded={on ? !!open : undefined}
               aria-label={v === 1 ? "One ayah" : "Multiple ayahs"}
               title={on ? "Ways to read" : v === 1 ? "One ayah" : "Multiple ayahs"}
+              // switching views is heard as a switch (as the context switch): up to many, down to one;
+              // the chosen one, opening its ways to read, taps
+              data-sfx={on ? undefined : v === 3 ? "on" : "off"}
               onClick={(e) => {
                 if (!on) return onView(v);
                 const r = e.currentTarget.getBoundingClientRect();
@@ -2004,7 +2177,11 @@ function FitName({ text, className }: { text: string; className?: string }) {
     fit();
     const ro = new ResizeObserver(fit);
     ro.observe(el.parentElement);
-    return () => ro.disconnect();
+    document.fonts.addEventListener("loadingdone", fit);
+    return () => {
+      ro.disconnect();
+      document.fonts.removeEventListener("loadingdone", fit);
+    };
   }, [text]);
   return (
     <span ref={ref} className={className}>

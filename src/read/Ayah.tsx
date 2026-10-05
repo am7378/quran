@@ -258,7 +258,7 @@ export const AyahSection = memo(function AyahSection({
         data-key={key}
         dir="ltr"
         className={cn("text-left font-serif text-[var(--box-fg)]", !showAr && "mx-auto max-w-[62ch]")}
-        style={{ fontSize: trPx, lineHeight: one && dense ? 1.55 : 1.6 }}
+        style={{ fontSize: `calc(${trPx}px * var(--read-scale, 1))`, lineHeight: one && dense ? 1.55 : 1.6 }}
       >
         {!showAr && (
           <span className="label mb-3 block text-[var(--box-faint)] tabular-nums">
@@ -281,7 +281,7 @@ export const AyahSection = memo(function AyahSection({
             data-key={key}
             dir="ltr"
             className="text-left font-serif text-[var(--box-fg)]"
-            style={{ fontSize: Math.round(trPx * 0.94 * 10) / 10, lineHeight: 1.6 }}
+            style={{ fontSize: `calc(${Math.round(trPx * 0.94 * 10) / 10}px * var(--read-scale, 1))`, lineHeight: 1.6 }}
           >
             {renderPieces(x, highlights.filter((h) => h.field === x.source), settings.showContext)}
           </p>
@@ -400,7 +400,7 @@ export function renderPieces(tr: ReturnType<typeof translationPieces>, hls: High
     .map((p, pi) =>
       splitPiece(p, hls).map((part, i) => {
         const inner = (
-          <span key={pi + "-" + i} className={tr.source === "qme" ? (p.kind === 1 ? "ctx" : "font-[560]") : undefined}>
+          <span key={pi + "-" + i} className={tr.source === "qme" ? (p.kind === 1 ? "ctx" : "tr-main") : undefined}>
             {wordsOf(part.text, part.start)}
           </span>
         );

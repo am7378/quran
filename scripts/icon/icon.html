@@ -38,9 +38,6 @@
     -webkit-background-clip: text; background-clip: text; color: transparent;
     filter: drop-shadow(0 18px 30px rgba(0, 0, 0, 0.45));
   }
-  .star { /* the site's mark, small, over the frame's corner */
-    position: absolute; left: 50%; top: 50%; width: 56px; height: 56px; margin: -320px 0 0 236px;
-  }
 </style>
 </head>
 <body>
@@ -50,12 +47,11 @@
     <div class="stage" id="stage">
       <div class="frame"></div>
       <div class="q">Q</div>
-      <svg class="star" viewBox="0 0 32 32"><path d="M16 3l3.6 9.4L29 16l-9.4 3.6L16 29l-3.6-9.4L3 16l9.4-3.6z" fill="#d9b064" opacity="0.9" /></svg>
     </div>
   </div>
   <script>
-    // the drawing drawn in close (as chosen: the frame filling the icon, the Q running out past it,
-    // the star on the frame's corner): s is the zoom, about the point (ox, oy)
+    // the drawing drawn in close (as chosen: the frame filling the icon, the Q running out past it):
+    // s is the zoom, about the point (ox, oy)
     const q = new URLSearchParams(location.search);
     const st = document.getElementById("stage");
     st.style.transformOrigin = `${q.get("ox") || 512}px ${q.get("oy") || 512}px`;

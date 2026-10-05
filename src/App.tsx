@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Backdrop, type Phase } from "@/components/Backdrop";
 import { Frame } from "@/components/Frame";
 import { Grain } from "@/components/bits";
@@ -11,9 +11,10 @@ import { Read } from "@/read/Read";
 import { SettingsPanel } from "@/read/Settings";
 import { AboutPanel } from "@/components/About";
 import { loadIndex, type Surah } from "@/lib/data";
-import { frameRect, useViewport } from "@/lib/layout";
+import type { Result } from "@/lib/search";
+import { frameRect, useViewport, useVisibleBottom } from "@/lib/layout";
 import { useStore } from "@/lib/store";
-import { useUI } from "@/lib/ui";
+import { useUI, type MenuItem } from "@/lib/ui";
 import { isLongPressMenu, watchLongPress, watchTwoFingerTap } from "@/lib/touch";
 import { watchSounds } from "@/lib/uiSounds";
 
@@ -44,24 +45,59 @@ export default function App() {
   const [resume, setResume] = useState<{ s: number; v: number } | null>(null);
   const about = useUI((s) => s.about);
   const setAbout = useUI((s) => s.setAbout);
+  const [coverSearch, setCoverSearch] = useState(false); // the cover turned into its search
 
   useEffect(() => {
     loadIndex().then(setIndex);
   }, []);
 
-  // the site's own right-click menu; pages add their own items first (and prevent this fallback)
+  // the site's own right-click menu where no page has one of its own (the reader and the index
+  // do, and prevent this): the cover, or what is open over it (About, Settings), or the sky
+  const live = useRef({ phase, coverSettings, about, coverSearch });
+  live.current = { phase, coverSettings, about, coverSearch };
   useEffect(() => {
     const on = (e: MouseEvent) => {
-      if ((e.target as HTMLElement).closest("input, textarea")) return; // where people type, the browser's own
+      const t = e.target as HTMLElement;
+      if (t.closest("input, textarea")) return; // where people type, the browser's own
       // the browser's menu from a long press stays away: the site raises its own (watchLongPress)
       if (isLongPressMenu(e)) return e.preventDefault();
       if (e.defaultPrevented) return;
       e.preventDefault();
-      const enter = document.querySelector<HTMLButtonElement>('button[aria-label="Read the Qur\'an"]');
-      useUI.getState().openMenu(e.clientX, e.clientY, [
-        ...(enter ? [{ type: "item" as const, label: "Read the Qur'an", hint: "Enter", onSelect: () => enter.click() }] : []),
-        { type: "item" as const, label: "Reload", onSelect: () => location.reload() },
-      ]);
+      const s = live.current;
+      const items: MenuItem[] = [];
+      const dialog = t.closest<HTMLElement>('[role="dialog"]');
+      if (s.about || s.coverSettings || dialog) {
+        items.push({ type: "label", label: s.about ? "About this reader" : s.coverSettings ? "Settings" : (dialog?.getAttribute("aria-label") ?? "") });
+        items.push({
+          type: "item",
+          label: "Close",
+          hint: "Esc",
+          onSelect: () => {
+            if (s.about) useUI.getState().setAbout(false);
+            else if (s.coverSettings) setCoverSettings(false);
+            else dialog?.querySelector<HTMLElement>('button[aria-label^="Close"]')?.click();
+          },
+        });
+      } else if (s.phase === "intro" && s.coverSearch) {
+        items.push({ type: "item", label: "Close the search", hint: "Esc", onSelect: () => setCoverSearch(false) });
+      } else if (s.phase === "intro") {
+        const enter = document.querySelector<HTMLButtonElement>('button[aria-label="Read the Qur\'an"]');
+        if (enter) items.push({ type: "item", label: "Read the Qur'an", hint: "Enter", onSelect: () => enter.click() });
+        items.push({
+          type: "item",
+          label: "Search",
+          hint: "/",
+          onSelect: () => {
+            document.querySelector<HTMLInputElement>(".cover-search-input")?.focus({ preventScroll: true });
+            setCoverSearch(true);
+          },
+        });
+        items.push({ type: "item", label: "Settings", onSelect: () => setCoverSettings(true) });
+        items.push({ type: "item", label: "About this reader", onSelect: () => useUI.getState().setAbout(true) });
+      }
+      if (items.length) items.push({ type: "sep" });
+      items.push({ type: "item", label: "Reload", onSelect: () => location.reload() });
+      useUI.getState().openMenu(e.clientX, e.clientY, items);
     };
     window.addEventListener("contextmenu", on);
     // touch screens: two fingers at once, or a press held where there is no text to select
@@ -127,6 +163,13 @@ export default function App() {
       useStore.getState().settings.reduceMotion ? 0 : 920,
     );
   }, []);
+  // what the cover's search found: straight into the reader there
+  const onCoverPick = useCallback((r: Result) => {
+    setCoverSearch(false);
+    const ayah = r.kind === "surah" ? 1 : r.ayah;
+    setStart({ surah: r.surah.n, ayah, showOpener: ayah === 1 });
+    setPhase("read");
+  }, []);
   // a saved ayah picked in the settings on page one
   const goTo = useCallback((surah: number, ayah: number) => {
     setCoverSettings(false);
@@ -154,11 +197,20 @@ export default function App() {
   useEffect(() => {
     document.documentElement.classList.toggle("focus-on", focus && phase === "read");
   }, [focus, phase]);
+  const cover = phase === "intro" && !entering && !coverSettings && !about;
+  const searchingCover = cover && coverSearch;
+  // a phone searching from the cover: the frame rises to the top and ends above the keyboard
+  const keyboardTop = useVisibleBottom(searchingCover && vp.mobile);
   const rect =
     focus && phase === "read"
       ? // focus: the frame is the whole screen (below the status bar, opened from the home screen)
         { left: 0, top: vp.standalone ? vp.insets.top : 0, width: vp.w, height: vp.h - (vp.standalone ? vp.insets.top : 0) }
-      : frameRect(vp.w, vp.h, phase === "intro" && !entering && !coverSettings && !about ? "intro" : phase === "intro" ? "select" : phase, vp);
+      : searchingCover && vp.mobile
+        ? (() => {
+            const top = (vp.standalone ? vp.insets.top : 0) + 10;
+            return { left: 10, top, width: vp.w - 20, height: Math.max(260, Math.min(keyboardTop, vp.h - vp.insets.bottom) - top - 10) };
+          })()
+        : frameRect(vp.w, vp.h, cover ? "intro" : phase === "intro" ? "select" : phase, vp);
 
   return (
     <>
@@ -168,7 +220,19 @@ export default function App() {
         <AnimatePresence>
           {phase === "intro" && !entering && (
             <motion.div key="intro" className="absolute inset-[3px]" exit={{ opacity: 0, transition: { duration: 0.25 } }}>
-              <Intro onEnter={enter} onSettings={() => setCoverSettings((o) => !o)} settingsOpen={coverSettings} mobile={vp.mobile} />
+              <Intro
+                onEnter={enter}
+                onSettings={() => {
+                  setCoverSearch(false);
+                  setCoverSettings((o) => !o);
+                }}
+                settingsOpen={coverSettings}
+                mobile={vp.mobile}
+                index={index}
+                searching={searchingCover}
+                onSearching={setCoverSearch}
+                onPick={onCoverPick}
+              />
             </motion.div>
           )}
           {phase === "select" && index && (
@@ -195,7 +259,7 @@ export default function App() {
         <AboutPanel open={about} onClose={() => setAbout(false)} />
       </Frame>
 
-      <CoverThemes show={phase === "intro" && !entering && !coverSettings && !about} mobile={vp.mobile} />
+      <CoverThemes show={cover && !coverSearch} mobile={vp.mobile} />
       <ContextMenu />
       {/* Paper draws its icons in ink: the line a little uneven, as by a pen */}
       <svg width="0" height="0" className="absolute" aria-hidden>

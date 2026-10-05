@@ -17,27 +17,14 @@ type Props = {
   inputClassName?: string;
 };
 
-const KIND_LABEL: Record<Result["kind"], string> = { surah: "Surah", ayah: "Ayah", juz: "Juz", text: "Text" };
+export const KIND_LABEL: Record<Result["kind"], string> = { surah: "Surah", ayah: "Ayah", juz: "Juz", text: "Text" };
 
-export function SearchBox({ surahs, juz, onPick, onPreview, autoFocus, dropdown = "overlay", className, inputClassName }: Props) {
-  const [q, setQ] = useState("");
+/** What a query finds: names, numbers and references at once; the words of the text a moment later. */
+export function useSearchResults(surahs: Surah[], juz: Record<string, string>, q: string) {
   const [text, setText] = useState<Result[]>([]);
   const [loadingText, setLoadingText] = useState(false);
-  const [active, setActive] = useState(0);
-  const [open, setOpen] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const listRef = useRef<HTMLDivElement>(null);
-
   const direct = useMemo(() => (surahs.length ? searchDirect(surahs, juz, q) : []), [surahs, juz, q]);
-
   useEffect(() => {
-    const best = direct.find((r) => r.kind === "surah" || r.kind === "ayah");
-    onPreview?.(best && "surah" in best ? best.surah : null);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [direct]);
-
-  useEffect(() => {
-    setActive(0);
     const query = q.trim();
     const strongDirect = direct.some((r) => r.score >= 90);
     if (query.length < 3 || /^\d/.test(query) || (strongDirect && query.length < 5)) {
@@ -53,12 +40,45 @@ export function SearchBox({ surahs, juz, onPick, onPreview, autoFocus, dropdown 
     }, 200);
     return () => clearTimeout(t);
   }, [q, surahs, direct]);
+  return { direct, all: [...direct, ...text], loadingText };
+}
+
+/** Arrow keys through the results, Enter to open, Escape to clear and then to leave. */
+export function resultKeys(e: React.KeyboardEvent, n: number, setActive: (f: (a: number) => number) => void, open: () => void, escape: () => void) {
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    setActive((a) => Math.min(n - 1, a + 1));
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    setActive((a) => Math.max(0, a - 1));
+  } else if (e.key === "Enter") {
+    e.preventDefault();
+    open();
+  } else if (e.key === "Escape") {
+    escape();
+  }
+}
+
+export function SearchBox({ surahs, juz, onPick, onPreview, autoFocus, dropdown = "overlay", className, inputClassName }: Props) {
+  const [q, setQ] = useState("");
+  const [active, setActive] = useState(0);
+  const [open, setOpen] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const listRef = useRef<HTMLDivElement>(null);
+  const { direct, all, loadingText } = useSearchResults(surahs, juz, q);
+
+  useEffect(() => {
+    const best = direct.find((r) => r.kind === "surah" || r.kind === "ayah");
+    onPreview?.(best && "surah" in best ? best.surah : null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [direct]);
+
+  useEffect(() => setActive(0), [q]);
 
   useEffect(() => {
     if (autoFocus) setTimeout(() => inputRef.current?.focus(), 350);
   }, [autoFocus]);
 
-  const all = [...direct, ...text];
   const showList = open && q.trim().length > 0;
 
   const pick = (r: Result) => {
@@ -67,21 +87,14 @@ export function SearchBox({ surahs, juz, onPick, onPreview, autoFocus, dropdown 
     inputRef.current?.blur();
   };
 
-  const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === "ArrowDown") {
-      e.preventDefault();
-      setActive((a) => Math.min(all.length - 1, a + 1));
-    } else if (e.key === "ArrowUp") {
-      e.preventDefault();
-      setActive((a) => Math.max(0, a - 1));
-    } else if (e.key === "Enter") {
-      e.preventDefault();
-      if (all[active]) pick(all[active]);
-    } else if (e.key === "Escape") {
-      if (q) setQ("");
-      else inputRef.current?.blur();
-    }
-  };
+  const onKey = (e: React.KeyboardEvent) =>
+    resultKeys(
+      e,
+      all.length,
+      setActive,
+      () => all[active] && pick(all[active]),
+      () => (q ? setQ("") : inputRef.current?.blur()),
+    );
 
   useEffect(() => {
     listRef.current?.querySelector(`[data-i="${active}"]`)?.scrollIntoView({ block: "nearest" });
@@ -123,41 +136,51 @@ export function SearchBox({ surahs, juz, onPick, onPreview, autoFocus, dropdown 
               dropdown === "overlay" ? "absolute left-0 right-0 top-full" : "relative",
             )}
           >
-            {all.length === 0 && !loadingText && (
-              <div className="px-3 py-3 font-serif text-[15px] text-[var(--box-muted)]">
-                Nothing matches. Try a number (18), a reference (2:255), a name (Kahf, الكهف) or a word (mercy).
-              </div>
-            )}
-            {all.map((r, i) => (
-              <button
-                key={`${r.kind}-${"surah" in r ? r.surah.n : ""}-${"ayah" in r ? r.ayah : ""}-${i}`}
-                data-i={i}
-                role="option"
-                aria-selected={i === active}
-                onMouseDown={(e) => e.preventDefault()}
-                onMouseEnter={() => setActive(i)}
-                onClick={() => pick(r)}
-                className={cn(
-                  "flex w-full items-start gap-3 border-b border-[var(--box-line)] px-3 py-2.5 text-left transition-colors last:border-b-0",
-                  i === active ? "bg-[var(--box-hover)]" : "",
-                )}
-              >
-                <span
-                  className={cn(
-                    "label-sm mt-[3px] w-[4.2em] shrink-0 text-[var(--box-faint)]",
-                    i === active && "text-[var(--color-gold)]",
-                  )}
-                >
-                  {KIND_LABEL[r.kind]}
-                </span>
-                <ResultBody r={r} />
-              </button>
-            ))}
-            {loadingText && <div className="label px-3 py-2.5 text-[var(--box-faint)]">Searching the text…</div>}
+            <ResultList all={all} active={active} setActive={setActive} pick={pick} loadingText={loadingText} />
           </motion.div>
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+/** The results, one row each: what it is, then where. */
+export function ResultList({ all, active, setActive, pick, loadingText }: { all: Result[]; active: number; setActive: (i: number) => void; pick: (r: Result) => void; loadingText: boolean }) {
+  return (
+    <>
+      {all.length === 0 && !loadingText && (
+        <div className="px-3 py-3 font-serif text-[15px] text-[var(--box-muted)]">
+          Nothing matches. Try a number (18), a reference (2:255), a name (Kahf, الكهف) or a word (mercy).
+        </div>
+      )}
+      {all.map((r, i) => (
+        <button
+          key={`${r.kind}-${"surah" in r ? r.surah.n : ""}-${"ayah" in r ? r.ayah : ""}-${i}`}
+          type="button"
+          data-i={i}
+          role="option"
+          aria-selected={i === active}
+          onMouseDown={(e) => e.preventDefault()}
+          onMouseEnter={() => setActive(i)}
+          onClick={() => pick(r)}
+          className={cn(
+            "flex w-full items-start gap-3 border-b border-[var(--box-line)] px-3 py-2.5 text-left transition-colors last:border-b-0",
+            i === active ? "bg-[var(--box-hover)]" : "",
+          )}
+        >
+          <span
+            className={cn(
+              "label-sm mt-[3px] w-[4.2em] shrink-0 text-[var(--box-faint)]",
+              i === active && "text-[var(--color-gold)]",
+            )}
+          >
+            {KIND_LABEL[r.kind]}
+          </span>
+          <ResultBody r={r} />
+        </button>
+      ))}
+      {loadingText && <div className="label px-3 py-2.5 text-[var(--box-faint)]">Searching the text…</div>}
+    </>
   );
 }
 

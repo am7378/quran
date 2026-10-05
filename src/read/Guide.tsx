@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useState, type ReactNode } from "react";
-import { Bookmark, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Maximize2, Mic, NotebookPen, Search, Share2, StickyNote } from "lucide-react";
+import { Bookmark, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Maximize2, Mic, Search, Share2, StickyNote } from "lucide-react";
+import { QuillGlyph } from "@/components/glyphs";
 import { EASE_IN_OUT, EASE_OUT, cn } from "@/lib/utils";
 import { THEMES } from "@/lib/themes";
 import { glossFor } from "./terms";
@@ -50,7 +51,7 @@ const STEPS: Step[] = [
   },
   {
     title: "Move through the surah",
-    text: "The slider under the frame goes straight to any ayah. The notebook at its end opens your reflection on the surah: write it, or record it.",
+    text: "The slider under the frame goes straight to any ayah. The quill at its end opens your reflection on the surah: write it, or record it.",
     demo: () => <SliderDemo />,
   },
   {
@@ -441,7 +442,7 @@ function SliderDemo() {
         </div>
         <span className="label-sm text-[var(--box-faint)]">286</span>
         <motion.span animate={{ color: k === 3 ? "var(--color-gold)" : "var(--box-fg)", scale: k === 3 ? 1.15 : 1 }}>
-          <NotebookPen size={16} />
+          <QuillGlyph size={17} />
         </motion.span>
       </div>
     </div>

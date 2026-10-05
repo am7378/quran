@@ -26,6 +26,29 @@ export function safeInsets(): Insets {
 }
 
 /**
+ * Where the page in view ends, from the top of the page: above a phone's keyboard while it is up
+ * (the visual viewport), else the window's foot. Followed only while asked (on).
+ */
+export function useVisibleBottom(on: boolean) {
+  const [bottom, setBottom] = useState(() => (typeof window === "undefined" ? 0 : window.innerHeight));
+  useEffect(() => {
+    if (!on) return;
+    const vv = window.visualViewport;
+    const read = () => setBottom(vv ? vv.offsetTop + vv.height : window.innerHeight);
+    read();
+    vv?.addEventListener("resize", read);
+    vv?.addEventListener("scroll", read);
+    window.addEventListener("resize", read);
+    return () => {
+      vv?.removeEventListener("resize", read);
+      vv?.removeEventListener("scroll", read);
+      window.removeEventListener("resize", read);
+    };
+  }, [on]);
+  return bottom;
+}
+
+/**
  * The size the frame is laid out for. On a touch screen it is the page's own layout size (not what
  * a zoom or the keyboard leaves visible), and it changes only when the width does (the phone
  * turned): the browser's bars, the keyboard opening to write a note, a zoom, none of them reshape
@@ -102,38 +125,28 @@ export function useViewport() {
 
 /**
  * The frame keeps the browser window's aspect ratio at a medium size.
- * On the reading page it rises a little to leave room for the ayah slider;
- * on page one it is small, the cover of the book. Opened from a phone's home screen, there is no
+ * The index (page two) and the reading page share one size, so the frame changes shape once, from
+ * the cover to the index, and holds it into the surah; it rises a little to leave room for the ayah
+ * slider below and the passage's theme above. On page one it is small, the cover of the book. Opened from a phone's home screen, there is no
  * browser around it: the frame takes the whole screen but for the passage's theme under the status
  * bar and the slider above the home indicator.
  */
 export function frameRect(w: number, h: number, phase: "intro" | "select" | "read", app?: { standalone: boolean; insets: Insets }): Rect {
   const mobile = w < 768;
   const ins = app?.insets ?? { top: 0, right: 0, bottom: 0, left: 0 };
-  if (mobile && app?.standalone) {
-    if (phase === "read") {
-      const top = ins.top + 46; // the theme, just under the status bar
-      return { left: 10, top, width: w - 20, height: h - top - (ins.bottom + 74) }; // the slider below
-    }
-    if (phase === "select") {
-      const top = ins.top + 14;
-      return { left: 10, top, width: w - 20, height: h - top - ins.bottom - 14 };
-    }
-  }
   if (phase === "intro") {
     const width = mobile ? w - 20 : Math.round(Math.min(640, Math.max(460, w * 0.44)));
     const height = Math.round(Math.min(h * (mobile ? 0.7 : 0.8), Math.max(mobile ? 420 : 430, h * (mobile ? 0.6 : 0.56))));
     return { left: Math.round((w - width) / 2), top: Math.round((h - height + ins.top - ins.bottom) / 2), width, height };
   }
-  if (mobile) {
-    const width = w - 20;
-    const height = phase === "read" ? h * 0.74 : h * 0.8;
-    const top = phase === "read" ? h * 0.085 : (h - height) / 2;
-    return { left: 10, top, width, height };
+  // the index and the reader: one size
+  if (mobile && app?.standalone) {
+    const top = ins.top + 46; // the theme, just under the status bar
+    return { left: 10, top, width: w - 20, height: h - top - (ins.bottom + 74) }; // the slider below
   }
-  const k = phase === "read" ? 0.76 : 0.76;
-  const width = Math.round(w * k);
-  const height = Math.round(h * (phase === "read" ? 0.72 : 0.76));
-  const top = Math.round((h - height) / 2 - (phase === "read" ? h * 0.025 : 0));
+  if (mobile) return { left: 10, top: h * 0.085, width: w - 20, height: h * 0.74 };
+  const width = Math.round(w * 0.76);
+  const height = Math.round(h * 0.72);
+  const top = Math.round((h - height) / 2 - h * 0.025);
   return { left: Math.round((w - width) / 2), top, width, height };
 }

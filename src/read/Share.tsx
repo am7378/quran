@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal, flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { MotifArt } from "@/components/Motif";
@@ -22,6 +22,18 @@ export type ShareContent = {
   theme?: ThemeId; // drawn the way this theme is
   box?: "night" | "paper";
   sky?: "dark" | "light"; // Monochrome's page around the frame
+  /** a part of the ayah (a highlight): `arabic` and `translation` are then the part and the other side whole */
+  part?: SharePart;
+};
+
+/**
+ * Sharing a part of an ayah: the side the reader highlighted, and the other side's words to choose
+ * from, with a first guess at the ones that go with the part (align.ts).
+ */
+export type SharePart = {
+  side: "ar" | "tr";
+  other: string[];
+  guess: [number, number] | null;
 };
 
 /**
@@ -196,10 +208,10 @@ function seeded(seed: number) {
 /* Classic: lapis night (or the surah card's art under a veil), a gold rule */
 const classic: Look = {
   art: "colour",
-  fonts: ['400 40px "Newsreader Variable"', '24px "Geist Mono Variable"'],
+  fonts: ['400 40px "Alegreya Variable"', '24px "Geist Mono Variable"'],
   ar: "#efe9dd",
   tr: "rgba(239,233,221,0.86)",
-  trFont: (px) => `400 ${px}px "Newsreader Variable"`,
+  trFont: (px) => `400 ${px}px "Alegreya Variable"`,
   paint(g, k) {
     const { W, H, S, m, fs, art } = k;
     if (art) {
@@ -257,10 +269,10 @@ function mono(white: boolean, dark: boolean): Look {
   };
   return {
     art: "grey",
-    fonts: ['400 40px "Geist Variable"', '24px "Geist Mono Variable"', '500 24px "Geist Mono Variable"'],
+    fonts: ['400 40px "Space Grotesk Variable"', '24px "Space Mono"'],
     ar: `rgb(${fg})`,
     tr: `rgba(${fg},0.84)`,
-    trFont: (px) => `400 ${px}px "Geist Variable"`,
+    trFont: (px) => `400 ${Math.round(px * 0.96)}px "Space Grotesk Variable"`,
     paint(g, k) {
       const { W, H, S, art } = k;
       const { q, x0, y0, x1, y1, foot, pad } = geom(k);
@@ -324,7 +336,7 @@ function mono(white: boolean, dark: boolean): Look {
       // the number large at the right, set apart by a rule, as on the sheet
       g.textAlign = "right";
       g.fillStyle = `rgb(${fg})`;
-      g.font = `500 ${Math.round(k.fs * 1.7)}px "Geist Mono Variable", monospace`;
+      g.font = `400 ${Math.round(k.fs * 1.6)}px "Space Mono", monospace`;
       spacing(g, 0);
       g.fillText(ref, x1 - pad, y);
       const rx = x1 - pad - g.measureText(ref).width - pad * 0.8;
@@ -333,8 +345,8 @@ function mono(white: boolean, dark: boolean): Look {
       line(g, rx, foot, rx, y1);
       g.textAlign = "left";
       g.fillStyle = `rgba(${fg},0.72)`;
-      g.font = `${k.fs}px "Geist Mono Variable", monospace`;
-      spacing(g, k.fs * 0.12);
+      g.font = `${Math.round(k.fs * 0.95)}px "Space Mono", monospace`;
+      spacing(g, k.fs * 0.06);
       g.fillText(name.toUpperCase(), x0 + pad, y);
     },
   };
@@ -345,10 +357,10 @@ function mono(white: boolean, dark: boolean): Look {
 const atlas: Look = (() => {
   const band = (k: Ctx) => Math.round(k.fs * 5.4);
   return {
-    fonts: ['400 40px "Geist Variable"', '400 24px "IBM Plex Mono"'],
+    fonts: ['400 40px "Commissioner Variable"', '400 24px "IBM Plex Mono"'],
     ar: "#0e0e0c",
     tr: "rgba(14,14,12,0.8)",
-    trFont: (px: number) => `400 ${px}px "Geist Variable"`,
+    trFont: (px: number) => `400 ${Math.round(px * 0.97)}px "Commissioner Variable"`,
     paint(g: CanvasRenderingContext2D, k: Ctx) {
       const { W, H, S, m } = k;
       const b = band(k);
@@ -395,10 +407,10 @@ const atlas: Look = (() => {
 const folio: Look = (() => {
   const rules = (k: Ctx) => ({ head: k.m + k.S * 0.07, foot: k.H - k.m - k.fs * 4.8, gap: k.S * 0.012, pad: k.S * 0.05 });
   return {
-    fonts: ['400 40px "Newsreader Variable"', '400 24px "Josefin Sans Variable"'],
+    fonts: ['400 40px "Brygada 1918 Variable"', '400 24px "Josefin Sans Variable"'],
     ar: "#141210",
     tr: "rgba(20,18,16,0.86)",
-    trFont: (px: number) => `400 ${px}px "Newsreader Variable"`,
+    trFont: (px: number) => `400 ${Math.round(px * 0.97)}px "Brygada 1918 Variable"`,
     paint(g: CanvasRenderingContext2D, k: Ctx) {
       const { W, H, S, m } = k;
       const { head, foot, gap, pad } = rules(k);
@@ -498,10 +510,10 @@ const paper: Look = (() => {
     return { x0: i, y0: i * 1.25, x1: k.W - i, y1: k.H - i };
   };
   return {
-    fonts: ['400 40px "Newsreader Variable"', '400 24px "Courier Prime"'],
+    fonts: ['380 40px "Fraunces Variable"', '400 24px "Courier Prime"'],
     ar: "#23211c",
     tr: "rgba(35,33,28,0.84)",
-    trFont: (px: number) => `400 ${px}px "Newsreader Variable"`,
+    trFont: (px: number) => `380 ${Math.round(px * 0.92)}px "Fraunces Variable"`,
     paint(g: CanvasRenderingContext2D, k: Ctx) {
       const { W, H, S } = k;
       const { x0, y0, x1, y1 } = sheet(k);
@@ -567,10 +579,10 @@ const paper: Look = (() => {
 const lunar: Look = (() => {
   const inset = (k: Ctx) => Math.round(k.m * 1.5);
   return {
-    fonts: ['300 40px "Geist Variable"', '400 24px "Jost Variable"'],
+    fonts: ['300 40px "Spectral"', '500 24px "Cormorant Garamond Variable"'],
     ar: "#e6edf5",
     tr: "rgba(230,237,245,0.82)",
-    trFont: (px: number) => `300 ${px}px "Geist Variable"`,
+    trFont: (px: number) => `300 ${Math.round(px * 1.04)}px "Spectral"`,
     paint(g: CanvasRenderingContext2D, k: Ctx) {
       const { W, H, S } = k;
       const p = inset(k);
@@ -636,9 +648,9 @@ const lunar: Look = (() => {
     reference(g: CanvasRenderingContext2D, k: Ctx, name: string, ref: string) {
       g.textAlign = "center";
       g.textBaseline = "middle";
-      g.fillStyle = "rgba(230,237,245,0.56)";
-      g.font = `400 ${k.fs}px "Jost Variable", sans-serif`;
-      spacing(g, k.fs * 0.32);
+      g.fillStyle = "rgba(230,237,245,0.62)";
+      g.font = `500 ${Math.round(k.fs * 1.15)}px "Cormorant Garamond Variable", serif`;
+      spacing(g, k.fs * 0.3);
       g.fillText(`${name}  ·  ${ref}`.toUpperCase(), k.W / 2, k.H - inset(k) - k.fs * 2.3);
     },
   };
@@ -694,11 +706,11 @@ export async function renderAyahImage(o: ShareContent, format: ShareFormat): Pro
   let tr = ar * 0.56;
   let arLines: string[] = [], trLines: string[] = [];
   const gap = () => ar * 0.9;
-  const height = () => arLines.length * ar * 1.95 + (trLines.length ? gap() + trLines.length * tr * 1.45 : 0);
+  const height = () => arLines.length * ar * 1.95 + (trLines.length ? (arLines.length ? gap() : 0) + trLines.length * tr * 1.45 : 0);
   for (let i = 0; i < 60; i++) {
     g.font = `${ar}px ${arFont}`;
     g.direction = "rtl";
-    arLines = wrap(g, o.arabic, aw);
+    arLines = o.arabic ? wrap(g, o.arabic, aw) : [];
     g.direction = "ltr";
     g.font = look.trFont(tr);
     trLines = o.translation ? wrap(g, o.translation, tw) : [];
@@ -719,9 +731,11 @@ export async function renderAyahImage(o: ShareContent, format: ShareFormat): Pro
     y += ar * 1.95;
   }
   if (trLines.length) {
-    y += gap() / 2;
-    look.rule(g, W / 2, y, k);
-    y += gap() / 2;
+    if (arLines.length) {
+      y += gap() / 2;
+      look.rule(g, W / 2, y, k);
+      y += gap() / 2;
+    }
     g.direction = "ltr";
     g.textAlign = "center";
     g.textBaseline = "middle";
@@ -746,22 +760,62 @@ export async function renderAyahImage(o: ShareContent, format: ShareFormat): Pro
 type Dest = "story" | "post" | "x";
 const DEST_FORMAT: Record<Dest, ShareFormat> = { story: "story", post: "square", x: "landscape" };
 
-export function ShareDialog({ content, onClose, onToast }: { content: ShareContent | null; onClose: () => void; onToast: (m: string) => void }) {
+type WithIt = "part" | "whole" | "none";
+
+/** words taken from within a sentence: no quotation mark left open or closed at its edges, no comma left hanging */
+function tidy(s: string) {
+  let t = s.trim();
+  const opens = (x: string) => (x.match(/[“‘"]/g) ?? []).length;
+  const closes = (x: string) => (x.match(/[”’"]/g) ?? []).length;
+  if (/^[“‘"]/.test(t) && opens(t) > closes(t)) t = t.slice(1);
+  if (/[”’"][.,;:!?]*$/.test(t) && closes(t) > opens(t)) t = t.replace(/[”’"]([.,;:!?]*)$/, "$1");
+  return t.replace(/[,;:]$/, "");
+}
+
+export function ShareDialog({ content: given, onClose, onToast }: { content: ShareContent | null; onClose: () => void; onToast: (m: string) => void }) {
   const [format, setFormat] = useState<ShareFormat>("square");
   const [url, setUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const blobs = useRef(new Map<ShareFormat, Blob>());
+  const blobs = useRef(new Map<string, Blob>());
+
+  // a part of an ayah: the other side goes with it in part (the words chosen), whole, or not at all
+  const part = given?.part;
+  const [withIt, setWithIt] = useState<WithIt>("part");
+  const [range, setRange] = useState<[number, number]>([0, 0]);
+  const [anchor, setAnchor] = useState<number | null>(null);
+  useEffect(() => {
+    if (!part) return;
+    setWithIt(part.guess ? "part" : "whole");
+    setRange(part.guess ?? [0, part.other.length - 1]);
+    setAnchor(null);
+  }, [part]);
+  const content = useMemo<ShareContent | null>(() => {
+    if (!given || !part) return given;
+    const other = withIt === "none" ? "" : withIt === "whole" ? (part.side === "ar" ? given.translation : given.arabic) : tidy(part.other.slice(range[0], range[1] + 1).join(" "));
+    return part.side === "ar" ? { ...given, translation: other } : { ...given, arabic: other };
+  }, [given, part, withIt, range]);
+  // (a word tapped starts the choice, the next one ends it)
+  const tapWord = (i: number) => {
+    if (anchor == null) {
+      setAnchor(i);
+      setRange([i, i]);
+    } else {
+      setRange([Math.min(anchor, i), Math.max(anchor, i)]);
+      setAnchor(null);
+    }
+  };
 
   useEffect(() => {
     blobs.current.clear();
-  }, [content]);
+  }, [given]);
 
   const get = async (f: ShareFormat) => {
     if (!content) throw new Error("nothing to share");
-    let b = blobs.current.get(f);
+    const id = `${f}\n${content.arabic}\n${content.translation}`;
+    let b = blobs.current.get(id);
     if (!b) {
       b = await renderAyahImage(content, f);
-      blobs.current.set(f, b);
+      blobs.current.set(id, b);
     }
     return b;
   };
@@ -783,11 +837,11 @@ export function ShareDialog({ content, onClose, onToast }: { content: ShareConte
   }, [content, format]);
 
   useEffect(() => {
-    if (!content) return;
+    if (!given) return;
     const key = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
-  }, [content, onClose]);
+  }, [given, onClose]);
 
   if (!content) return createPortal(<AnimatePresence />, document.body);
   const name = `quran-${content.ref.replace(":", "-")}`;
@@ -813,7 +867,7 @@ export function ShareDialog({ content, onClose, onToast }: { content: ShareConte
       } else {
         download(b, f);
         if (d === "x") {
-          const text = `${content.translation}\n— ${content.surahName} ${content.ref}`;
+          const text = `${content.translation || content.arabic}\n— ${content.surahName} ${content.ref}`;
           window.open(`https://x.com/intent/post?text=${encodeURIComponent(text.slice(0, 240))}&url=${encodeURIComponent(content.url)}`, "_blank", "noopener");
           onToast("Image saved. Attach it to the post that just opened.");
         } else onToast(d === "story" ? "Image saved. Add it to your Instagram story from your gallery." : "Image saved. Post it on Instagram from your gallery.");
@@ -838,20 +892,20 @@ export function ShareDialog({ content, onClose, onToast }: { content: ShareConte
         <motion.div
           role="dialog"
           aria-label={`Share ${content.ref}`}
-          className="theme-dialog relative flex max-h-[92vh] w-full max-w-[880px] flex-col overflow-hidden border-[3px] border-[#06080c] bg-[#0a0f18] text-[#efe9dd] shadow-[0_40px_120px_-30px_rgba(0,0,0,0.8)] md:flex-row"
+          className="theme-dialog relative flex max-h-[92vh] w-full max-w-[880px] flex-col overflow-hidden border-[3px] border-[#06080c] bg-[#0a0f18] text-[#efe9dd] shadow-[0_40px_120px_-30px_rgba(0,0,0,0.8)] md:max-h-[88vh] md:flex-row"
           initial={{ y: 20, opacity: 0, scale: 0.98 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
           transition={{ duration: 0.4, ease: EASE_OUT }}
         >
           <div className="grain-local" />
           {/* preview */}
-          <div className="relative flex min-h-[240px] flex-1 items-center justify-center bg-black/30 p-5 md:p-8">
+          <div className="relative flex min-h-[200px] shrink-0 items-center justify-center bg-black/30 p-4 md:min-h-[240px] md:flex-1 md:shrink md:p-8">
             {url ? (
               <motion.img
                 key={url}
                 src={url}
                 alt={`${content.surahName} ${content.ref} as an image`}
-                className="max-h-[52vh] max-w-full object-contain shadow-[0_20px_60px_-20px_rgba(0,0,0,0.9)] md:max-h-[70vh]"
+                className={cn("max-w-full object-contain shadow-[0_20px_60px_-20px_rgba(0,0,0,0.9)] md:max-h-[70vh]", part ? "max-h-[34vh]" : "max-h-[52vh]")}
                 initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.35, ease: EASE_OUT }}
@@ -861,10 +915,10 @@ export function ShareDialog({ content, onClose, onToast }: { content: ShareConte
             )}
           </div>
           {/* controls */}
-          <div className="relative flex w-full flex-col gap-6 border-t border-white/10 p-5 md:w-[320px] md:border-l md:border-t-0 md:p-7">
+          <div className="thin-scroll relative flex min-h-0 w-full flex-col gap-6 overflow-y-auto border-t border-white/10 p-5 md:w-[340px] md:border-l md:border-t-0 md:p-7">
             <div className="flex items-start justify-between">
               <div>
-                <div className="label text-white/45">Share</div>
+                <div className="label text-white/45">{part ? "Share a part" : "Share"}</div>
                 <div className="mt-1 font-serif text-[22px] italic">
                   {content.surahName} <span className="font-mono text-[14px] not-italic text-white/60">{content.ref}</span>
                 </div>
@@ -873,6 +927,56 @@ export function ShareDialog({ content, onClose, onToast }: { content: ShareConte
                 <Close size={16} />
               </button>
             </div>
+
+            {part && (
+              <div>
+                <div className="label mb-2 text-white/45">{part.side === "ar" ? "With its translation" : "With its Arabic"}</div>
+                <div className="flex border border-white/15 p-0.5">
+                  {(["part", "whole", "none"] as WithIt[]).map((w) => (
+                    <button
+                      key={w}
+                      type="button"
+                      onClick={() => setWithIt(w)}
+                      aria-pressed={withIt === w}
+                      className={cn("label relative flex-1 py-2 transition-colors", withIt === w ? "text-[#0a0f18]" : "text-white/60 hover:text-white")}
+                    >
+                      {withIt === w && <motion.span layoutId="share-with" className="absolute inset-0 bg-[#efe9dd]" transition={{ duration: 0.3, ease: EASE_OUT }} />}
+                      <span className="relative">{w === "part" ? "Its words" : w === "whole" ? "Whole ayah" : "None"}</span>
+                    </button>
+                  ))}
+                </div>
+                <AnimatePresence initial={false}>
+                  {withIt === "part" && (
+                    <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: EASE_OUT }} className="overflow-hidden">
+                      <div
+                        dir={part.side === "ar" ? "ltr" : "rtl"}
+                        className={cn("thin-scroll mt-2 max-h-[150px] overflow-y-auto border border-white/10 px-2.5 py-2", part.side === "ar" ? "font-serif text-[14.5px] leading-[1.75]" : "quran text-right text-[20px] leading-[2]")}
+                      >
+                        {part.other.map((w, i) => {
+                          const inIt = i >= range[0] && i <= range[1];
+                          return (
+                            <span key={i}>
+                              <button
+                                type="button"
+                                onClick={() => tapWord(i)}
+                                className={cn("transition-colors", inIt ? "bg-[#efe9dd] text-[#0a0f18] shadow-[0_0_0_1px_#efe9dd]" : "text-white/55 hover:text-white", anchor === i && "outline outline-1 outline-[#c9a24a]")}
+                              >
+                                {w}
+                              </button>
+                              {/* (the space between two chosen words is chosen too: one strip) */}
+                              <span className={i >= range[0] && i < range[1] ? "bg-[#efe9dd] shadow-[0_0_0_1px_#efe9dd]" : undefined}> </span>
+                            </span>
+                          );
+                        })}
+                      </div>
+                      <div className="mt-1.5 text-[11.5px] leading-snug text-white/45">
+                        {anchor == null ? "The words that go with it are marked. To change them, tap the first word, then the last." : "Now tap the last word."}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
 
             <div>
               <div className="label mb-2 text-white/45">Shape</div>
@@ -926,7 +1030,7 @@ export function ShareDialog({ content, onClose, onToast }: { content: ShareConte
                 icon={<Copy size={14} />}
                 label="Copy text"
                 onClick={async () => {
-                  (await copyText(`${content.arabic}\n\n${content.translation}\n\n— ${content.surahName} ${content.ref}`)) && onToast(`Copied ${content.ref}`);
+                  (await copyText([content.arabic, content.translation, `— ${content.surahName} ${content.ref}`].filter(Boolean).join("\n\n"))) && onToast(`Copied ${content.ref}`);
                 }}
               />
               <Row icon={<Link2 size={14} />} label="Copy link" onClick={async () => (await copyText(content.url)) && onToast("Link copied")} />

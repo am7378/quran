@@ -16,7 +16,8 @@ export function ContextMenu() {
     if (!menu) return;
     const el = ref.current;
     const w = el?.offsetWidth ?? 240, h = el?.offsetHeight ?? 300;
-    setPos({ x: Math.min(menu.x, window.innerWidth - w - 8), y: Math.min(menu.y, window.innerHeight - h - 8) });
+    // always whole on the screen: moved in from the edges; a menu taller than the screen scrolls
+    setPos({ x: Math.max(8, Math.min(menu.x, window.innerWidth - w - 8)), y: Math.max(8, Math.min(menu.y, window.innerHeight - h - 8)) });
     setActive(-1);
   }, [menu]);
 
@@ -59,8 +60,8 @@ export function ContextMenu() {
         <motion.div
           ref={ref}
           role="menu"
-          className="theme-pop fixed z-[100] min-w-[228px] overflow-hidden border border-[var(--box-line)] bg-[var(--box-bg-solid)] py-1.5 text-[var(--box-fg)] shadow-[0_24px_70px_-20px_rgba(0,0,0,0.8)]"
-          style={{ left: pos.x, top: pos.y }}
+          className="theme-pop thin-scroll fixed z-[100] min-w-[228px] max-w-[calc(100vw-16px)] overflow-y-auto overflow-x-hidden border border-[var(--box-line)] bg-[var(--box-bg-solid)] py-1.5 text-[var(--box-fg)] shadow-[0_24px_70px_-20px_rgba(0,0,0,0.8)]"
+          style={{ left: pos.x, top: pos.y, maxHeight: "calc(100dvh - 16px)" }}
           initial={{ opacity: 0, scale: 0.97, y: -4 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.98, transition: { duration: 0.1 } }}

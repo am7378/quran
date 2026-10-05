@@ -48,6 +48,118 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
 }
 @font-face {
+  font-family: "Alegreya Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 900;
+  src: url("../node_modules/@fontsource-variable/alegreya/files/alegreya-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+}
+@font-face {
+  font-family: "Alegreya Variable";
+  font-style: italic;
+  font-display: swap;
+  font-weight: 400 900;
+  src: url("../node_modules/@fontsource-variable/alegreya/files/alegreya-latin-ext-wght-italic.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+}
+@font-face {
+  font-family: "Cormorant Garamond Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url("../node_modules/@fontsource-variable/cormorant-garamond/files/cormorant-garamond-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+}
+@font-face {
+  font-family: "Cormorant Garamond Variable";
+  font-style: italic;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url("../node_modules/@fontsource-variable/cormorant-garamond/files/cormorant-garamond-latin-ext-wght-italic.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+}
+@font-face {
+  font-family: "Space Grotesk Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 700;
+  src: url("../node_modules/@fontsource-variable/space-grotesk/files/space-grotesk-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+}
+@font-face {
+  font-family: "Commissioner Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("../node_modules/@fontsource-variable/commissioner/files/commissioner-latin-ext-flar-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+}
+@font-face {
+  font-family: "Brygada 1918 Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 700;
+  src: url("../node_modules/@fontsource-variable/brygada-1918/files/brygada-1918-latin-ext-wght-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+}
+@font-face {
+  font-family: "Brygada 1918 Variable";
+  font-style: italic;
+  font-display: swap;
+  font-weight: 400 700;
+  src: url("../node_modules/@fontsource-variable/brygada-1918/files/brygada-1918-latin-ext-wght-italic.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+}
+@font-face {
+  font-family: "Fraunces Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("../node_modules/@fontsource-variable/fraunces/files/fraunces-latin-ext-opsz-normal.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+}
+@font-face {
+  font-family: "Spectral";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300;
+  src: url("../node_modules/@fontsource/spectral/files/spectral-latin-ext-300-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+}
+@font-face {
+  font-family: "Spectral";
+  font-style: italic;
+  font-display: swap;
+  font-weight: 300;
+  src: url("../node_modules/@fontsource/spectral/files/spectral-latin-ext-300-italic.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+}
+@font-face {
+  font-family: "Spectral";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("../node_modules/@fontsource/spectral/files/spectral-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+}
+@font-face {
+  font-family: "Spectral";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("../node_modules/@fontsource/spectral/files/spectral-latin-ext-500-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+}
+@font-face {
+  font-family: "Space Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("../node_modules/@fontsource/space-mono/files/space-mono-latin-ext-400-normal.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+}
+@font-face {
   font-family: "Caveat Variable";
   font-style: normal;
   font-display: swap;
@@ -59,7 +171,8 @@
 @theme {
   --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, monospace;
-  --font-serif: "Newsreader Variable", Georgia, serif;
+  --font-serif: "Alegreya Variable", "Newsreader Variable", Georgia, serif;
+  --font-display: "Cormorant Garamond Variable", "Newsreader Variable", Georgia, serif;
   --font-quran: "KFGQPC HAFS", "Amiri Quran", serif;
   --font-kufi: "Reem Kufi", "Amiri", serif;
   --font-hand: "Caveat Variable", "Segoe Print", cursive;
@@ -206,6 +319,36 @@ button {
   68% { transform: translate(3%, 3%); }
   85% { transform: translate(-1%, 4%); }
   100% { transform: translate(0, 0); }
+}
+
+/* ── each theme's lettering ────────────────────────────────────
+   Three faces to a theme: one to read the translation in (--font-serif), one for names and headings
+   (--font-display: the surah's name in the header, the passage's theme above the frame, the cover),
+   one for labels (--font-mono). Each reading face is set a little larger or smaller (--read-scale)
+   so the size chosen in Settings reads about the same in every theme; the weight of Quraan Made
+   Easy's own words (--tr-main) is the theme's too. */
+:root {
+  --read-scale: 1;
+  --tr-main: 560;
+}
+.display {
+  font-family: var(--font-display);
+}
+.tr-main {
+  font-weight: var(--tr-main);
+}
+/* the theme's face for names, alone (large headings, as the sections of Settings): not its capitals or spacing */
+.display-face {
+  font-family: var(--font-display);
+}
+:root[data-theme="classic"] .display-face,
+:root[data-theme="lunar"] .display-face {
+  font-weight: 500;
+  font-size-adjust: 0.43;
+}
+:root[data-theme="classic"] .display {
+  font-weight: 500;
+  font-size-adjust: 0.43; /* Cormorant's small letters are small: as large as the others' */
 }
 
 /* ── type utilities ─────────────────────────────────────────── */
@@ -553,9 +696,12 @@ mark.hl.fresh {
    around it dark (by default) or light stone. Arabic keeps its scripts; colour stays only where the
    reader put it (highlights). */
 :root[data-theme="mono"] {
-  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+  --font-sans: "Space Grotesk Variable", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Space Grotesk Variable", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk Variable", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Space Mono", "Geist Mono Variable", ui-monospace, monospace;
+  --read-scale: 0.97;
+  --tr-main: 600;
   --color-gold: #ece6dc;
   --color-gold-soft: #ffffff;
   --box-bg: #161616;
@@ -632,9 +778,8 @@ mark.hl.fresh {
   font-style: normal;
 }
 :root[data-theme="mono"] .display {
-  font-family: var(--font-sans);
   font-weight: 500;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.03em;
   line-height: 1.04;
 }
 :root[data-theme="mono"] .font-serif {
@@ -642,13 +787,13 @@ mark.hl.fresh {
 }
 /* labels in mono capitals, as a technical drawing is lettered */
 :root[data-theme="mono"] .label {
-  font-size: 10.5px;
-  letter-spacing: 0.07em;
+  font-size: 10px;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 :root[data-theme="mono"] .label-sm {
-  font-size: 9.5px;
-  letter-spacing: 0.08em;
+  font-size: 9px;
+  letter-spacing: 0.05em;
   text-transform: uppercase;
 }
 :root[data-theme="mono"] .grain-local {
@@ -765,7 +910,7 @@ mark.hl.fresh {
   background-repeat: no-repeat;
 }
 :root[data-theme="mono"] .cover-page::before {
-  inset: 64px 22px 44px;
+  inset: 64px 22px 54px;
 }
 /* the bezel of the sky's drawing, turning (mono-sky.tsx) */
 .mono-turn {
@@ -801,7 +946,10 @@ mark.hl.fresh {
    one ember orange for what matters most. Names and headings are set
    large, light and close; labels small, in sentence case. */
 :root[data-theme="atlas"] {
-  --font-serif: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Commissioner Variable", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Bodoni Moda Variable", Georgia, serif;
+  --read-scale: 0.97;
+  --tr-main: 600;
   --font-mono: "IBM Plex Mono", ui-monospace, monospace;
   --color-gold: #ff5a2e;
   --color-gold-soft: #ff8a64;
@@ -841,10 +989,10 @@ mark.hl.fresh {
 }
 :root[data-theme="atlas"] .font-serif {
   font-weight: 380;
-  letter-spacing: -0.018em;
+  letter-spacing: -0.008em;
+  font-variation-settings: "FLAR" 60; /* the strokes' ends flared a little, as if cut */
 }
 :root[data-theme="atlas"] .display {
-  font-family: "Bodoni Moda Variable", Georgia, serif;
   font-weight: 450;
   letter-spacing: -0.01em;
   line-height: 1.08;
@@ -918,6 +1066,10 @@ mark.hl.fresh {
    a surah's translation begins. Afternoon light falls on the paper. */
 :root[data-theme="folio"] {
   --font-mono: "Josefin Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Brygada 1918 Variable", "Newsreader Variable", Georgia, serif;
+  --font-display: "Josefin Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --read-scale: 0.97;
+  --tr-main: 600;
   --color-gold: #141210;
   --color-gold-soft: #3a3226;
   --box-bg: #d8c294;
@@ -960,7 +1112,6 @@ mark.hl.fresh {
   font-style: normal;
 }
 :root[data-theme="folio"] .display {
-  font-family: "Josefin Sans Variable", var(--font-sans);
   font-style: normal;
   font-weight: 400;
   letter-spacing: 0.08em;
@@ -1040,6 +1191,10 @@ mark.hl.fresh {
   --paper-grain: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20width%3D%27180%27%20height%3D%27180%27%3E%3Cfilter%20id%3D%27g%27%3E%3CfeTurbulence%20type%3D%27fractalNoise%27%20baseFrequency%3D%270.85%27%20numOctaves%3D%273%27%20stitchTiles%3D%27stitch%27%2F%3E%3CfeColorMatrix%20values%3D%270%200%200%200%200.3%200%200%200%200%200.28%200%200%200%200%200.24%200%200%200%200.09%200%27%2F%3E%3C%2Ffilter%3E%3Crect%20width%3D%27180%27%20height%3D%27180%27%20filter%3D%27url(%23g)%27%2F%3E%3C%2Fsvg%3E");
   --paper-clip: url("data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%2040%2030%27%3E%3Cpath%20d%3D%27M6%209%20L34%209%20L37%2027%20L3%2027%20Z%27%20fill%3D%27%231b1b1b%27%2F%3E%3Cpath%20d%3D%27M6%209%20L34%209%20L35%2013%20L5%2013%20Z%27%20fill%3D%27%233a3a3a%27%2F%3E%3Cpath%20d%3D%27M11%2010%20C10%203%2013%201%2020%201%20C27%201%2030%203%2029%2010%27%20fill%3D%27none%27%20stroke%3D%27%23b8bcc0%27%20stroke-width%3D%271.6%27%20stroke-linecap%3D%27round%27%2F%3E%3Cpath%20d%3D%27M14%2010%20C13.5%205%2015.5%203.5%2020%203.5%20C24.5%203.5%2026.5%205%2026%2010%27%20fill%3D%27none%27%20stroke%3D%27%238d9196%27%20stroke-width%3D%271.1%27%20stroke-linecap%3D%27round%27%2F%3E%3C%2Fsvg%3E");
   --font-mono: "Courier Prime", ui-monospace, monospace;
+  --font-serif: "Fraunces Variable", "Newsreader Variable", Georgia, serif;
+  --font-display: "Fraunces Variable", Georgia, serif;
+  --read-scale: 0.92;
+  --tr-main: 600;
   --color-gold: #9b3d2c;
   --color-gold-soft: #b8573f;
   --box-bg: #ece8de;
@@ -1125,7 +1280,6 @@ mark.hl.fresh {
 }
 /* names in a soft serif, slanting; labels typed */
 :root[data-theme="paper"] .display {
-  font-family: "Fraunces Variable", Georgia, serif;
   font-style: italic;
   font-weight: 330;
   letter-spacing: -0.012em;
@@ -1175,6 +1329,15 @@ mark.hl.fresh {
 :root[data-theme="paper"] .theme-dialog {
   border-radius: 1px;
 }
+/* Atlas's theme above the frame in Bodoni's italic; Folio's in small spaced capitals */
+:root[data-theme="atlas"] .theme-tag.display {
+  font-style: italic;
+  font-weight: 450;
+}
+:root[data-theme="folio"] .theme-tag.display {
+  font-size: 14px;
+  letter-spacing: 0.16em;
+}
 /* the theme's line above the frame: a typed tag */
 :root[data-theme="paper"] .theme-tag {
   display: inline-block;
@@ -1214,7 +1377,10 @@ mark.hl.fresh {
    a heavy dark bezel and round corners; thin, widely spaced capitals for
    names; silver for the accent; panels rising slowly into view. */
 :root[data-theme="lunar"] {
-  --font-serif: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Spectral", "Newsreader Variable", Georgia, serif;
+  --font-display: "Cormorant Garamond Variable", Georgia, serif;
+  --read-scale: 1.04;
+  --tr-main: 500;
   --font-mono: "Jost Variable", ui-sans-serif, system-ui, sans-serif;
   --color-gold: #d9e4ef;
   --color-gold-soft: #ffffff;
@@ -1246,13 +1412,19 @@ mark.hl.fresh {
   font-weight: 500;
 }
 :root[data-theme="lunar"] .font-serif {
-  font-weight: 340;
+  font-weight: 300;
 }
 :root[data-theme="lunar"] .display {
-  font-family: "Jost Variable", var(--font-sans);
-  font-weight: 300;
-  letter-spacing: 0.2em;
+  font-weight: 500;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
+  font-size-adjust: 0.43;
+}
+/* the passage's theme above the frame: the same Garamond, in its italic, as written by hand */
+:root[data-theme="lunar"] .theme-tag.display {
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0.01em;
 }
 :root[data-theme="lunar"] .label {
   font-size: 10px;
@@ -1365,4 +1537,16 @@ html.ios-short body {
 }
 html.ios-short.focus-on body {
   background: var(--box-bg-solid, var(--sky));
+}
+
+/* the cover's search, open: typed in the theme's reading face, at a size a phone keeps (no zoom) */
+.cover-search-input {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  color: var(--box-fg);
+  caret-color: var(--color-gold);
+}
+.cover-search-input::placeholder {
+  color: var(--box-faint);
+  opacity: 1;
 }
