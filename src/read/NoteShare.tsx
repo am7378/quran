@@ -6,6 +6,7 @@ import { Copy, Download, Share2, X as Close } from "lucide-react";
 import type { Note } from "@/lib/store";
 import { EASE_OUT, cn, copyText } from "@/lib/utils";
 import { grain, wrap } from "./Share";
+import { ayn } from "@/lib/names";
 import { voiceKey } from "./VoiceNote";
 
 /**
@@ -35,7 +36,8 @@ function ground(g: CanvasRenderingContext2D) {
   g.fillRect(0, 0, S, S);
 }
 
-function caption(g: CanvasRenderingContext2D, text: string) {
+function caption(g: CanvasRenderingContext2D, raw: string) {
+  const text = ayn(raw);
   g.save();
   g.textAlign = "center";
   g.textBaseline = "middle";

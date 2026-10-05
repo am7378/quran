@@ -160,30 +160,30 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
 }
 @font-face {
-  font-family: "Noto Serif Display Variable";
+  font-family: "Archivo Variable";
   font-style: normal;
   font-display: swap;
   font-weight: 100 900;
-  font-stretch: 62.5% 100%;
-  src: url("../node_modules/@fontsource-variable/noto-serif-display/files/noto-serif-display-latin-ext-wdth-normal.woff2") format("woff2-variations");
+  font-stretch: 62% 125%;
+  src: url("../node_modules/@fontsource-variable/archivo/files/archivo-latin-ext-wdth-normal.woff2") format("woff2-variations");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
 }
 @font-face {
-  font-family: "Noto Serif Variable";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 100 900;
-  font-stretch: 62.5% 100%;
-  src: url("../node_modules/@fontsource-variable/noto-serif/files/noto-serif-latin-ext-wdth-normal.woff2") format("woff2-variations");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
-}
-@font-face {
-  font-family: "Noto Serif Variable";
+  font-family: "Archivo Variable";
   font-style: italic;
   font-display: swap;
   font-weight: 100 900;
-  font-stretch: 62.5% 100%;
-  src: url("../node_modules/@fontsource-variable/noto-serif/files/noto-serif-latin-ext-wdth-italic.woff2") format("woff2-variations");
+  font-stretch: 62% 125%;
+  src: url("../node_modules/@fontsource-variable/archivo/files/archivo-latin-ext-wdth-italic.woff2") format("woff2-variations");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
+}
+@font-face {
+  font-family: "Martian Mono Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 800;
+  font-stretch: 75% 112.5%;
+  src: url("../node_modules/@fontsource-variable/martian-mono/files/martian-mono-latin-ext-wdth-normal.woff2") format("woff2-variations");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
 }
 @font-face {
@@ -332,6 +332,88 @@ html.touch .surah-card .grain-local {
 .touch-pick {
   background: rgba(246, 218, 96, 0.42);
   border-radius: 2px;
+}
+/* a surah name's lowercase ĥ (lib/names.tsx): its circumflex over the middle of the letter, just
+   clear of the stem, as a capital's sits (a face's own ĥ perches it on the stem's top, leaning off
+   crooked in italics). Placed from the baseline by the face's own measures, in ems (set on .hat) */
+.hat::after {
+  content: "\02C6";
+  content: "\02C6" / "";
+  display: inline-block;
+  position: relative;
+  width: 0;
+  top: calc(-1em * var(--hat-lift, 0.27));
+  left: calc(1em * var(--hat-dx, -0.42));
+  letter-spacing: 0;
+  text-transform: none;
+  pointer-events: none;
+}
+/* (a name cut short with an ellipsis is cut only at its end: the mark rises above it freely) */
+.truncate:has(.hat) {
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+/* the lens over a finger choosing words (touchSelect.tsx): a small round glass held above it, the
+   words under the finger larger in it. Ground glass at the rim, a soft light caught at the top, a
+   shadow under it as it lifts off the page */
+.touch-lens {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 76;
+  width: 118px;
+  height: 118px;
+  pointer-events: none;
+  will-change: transform;
+}
+.touch-lens-glass {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 50%;
+  box-shadow:
+    0 22px 44px -16px rgba(0, 0, 0, 0.62),
+    0 4px 12px -3px rgba(0, 0, 0, 0.32),
+    0 0 0 1px rgba(0, 0, 0, 0.22);
+  contain: layout paint;
+}
+.touch-lens-inner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+}
+.touch-lens-picks {
+  position: absolute;
+  inset: 0;
+}
+.touch-lens-glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  background:
+    radial-gradient(80% 52% at 34% 10%, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 60%),
+    radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0) 60%, rgba(0, 0, 0, 0.12) 84%, rgba(0, 0, 0, 0.3) 100%);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.42),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.5),
+    inset 0 -10px 18px -8px rgba(0, 0, 0, 0.3);
+}
+.touch-lens-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  z-index: 2;
+  width: 6px;
+  height: 6px;
+  margin: -3px 0 0 -3px;
+  border-radius: 50%;
+  background: var(--color-gold);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--box-bg-solid, #fff) 85%, transparent);
+  opacity: 0.85;
 }
 body {
   background: var(--sky);
@@ -1568,143 +1650,207 @@ mark.hl.fresh {
   letter-spacing: 0.02em;
 }
 
-/* ══ Royal ═══════════════════════════════════════════════════════
-   A colour's specimen sheet (site ui inspiration/blue.jpg): a dusk in deep royal blue over a range
-   of mountains, set on black like a print on a sheet (components/ui/skies.tsx), and everything
-   written in royal blue (#4169E1, the web's royal blue; #002366, the traditional one, the deepest
-   tone): names in a tall narrow serif, the reading in its text cut, narrow too, and the labels in
-   small italics, in sentence case, as a specimen's captions are. Its frame dark glass with a royal
-   hairline; the word's meaning on a royal card; the surahs' art in royal duotone. */
-:root[data-theme="royal"] {
-  --font-serif: "Noto Serif Variable", "Marks Serif", Georgia, serif;
-  --font-display: "Noto Serif Display Variable", "Marks Serif", Georgia, serif;
-  --font-mono: "Noto Serif Variable", "Marks Serif", Georgia, serif;
+/* ══ Blue ════════════════════════════════════════════════════════
+   A poster printed in one colour (site UI inspiration: D1, d2, d3): royal blue (#4169E1) as a
+   halftone screen behind everything (components/ui/skies.tsx), the frame a sheet of white paper
+   laid on it, square, with a hard navy shadow and crop marks at its corners. Names in a heavy, wide
+   italic grotesk (Archivo), the way a box logo is lettered: the passage's theme above the frame set
+   in blue on a white block, the cover's name in white on a blue one. The reading in the same
+   grotesk's text weights, its context in blue; labels in a technical mono's small capitals (Martian
+   Mono), as a spec sheet is lettered, and the surah's measure in a row of them above the frame, its
+   number large on its side beside it. Panels a slab of the blue with white type; buttons stamped,
+   with a hard shadow that presses in. */
+:root[data-theme="blue"] {
+  --font-serif: "Archivo Variable", "Marks Sans", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Archivo Variable", "Marks Sans", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Martian Mono Variable", "Marks Sans", "Geist Mono Variable", ui-monospace, monospace;
   --read-scale: 0.95;
-  --tr-main: 560;
+  --tr-main: 620;
   --color-gold: #4169e1;
-  --color-gold-soft: #7d9bf7;
-  --box-bg: rgba(2, 5, 18, 0.8);
-  --box-bg-solid: #03061a;
-  --box-fg: #7d9bf7;
-  --box-muted: rgba(125, 155, 247, 0.74);
-  --box-faint: rgba(97, 130, 240, 0.62);
-  --box-line: rgba(65, 105, 225, 0.3);
-  --box-hover: rgba(65, 105, 225, 0.1);
-  --box-frame: rgba(65, 105, 225, 0.6);
-  --box-accent: #5b7ff0;
-  --box-context: #4169e1;
-  --panel-bg: #01030c;
+  --color-gold-soft: #6f8ef0;
+  --box-bg: #f3f2ee;
+  --box-bg-solid: #f3f2ee;
+  --box-fg: #0e1014;
+  --box-muted: rgba(14, 16, 20, 0.68);
+  --box-faint: rgba(14, 16, 20, 0.5);
+  --box-line: rgba(14, 16, 20, 0.14);
+  --box-hover: rgba(65, 105, 225, 0.09);
+  --box-frame: #0e1014;
+  --box-accent: #4169e1;
+  --box-context: #3459d0;
+  --panel-bg: #4169e1;
   --tip-bg: #4169e1;
-  --tip-fg: #01030c;
+  --tip-fg: #ffffff;
   --box-radius: 0px;
-  --box-border: 1px;
-  --box-shadow: 0 50px 120px -40px rgba(0, 0, 0, 0.92), 0 18px 40px -20px rgba(0, 0, 0, 0.7);
+  --box-border: 1.5px;
+  --box-shadow: 12px 12px 0 #0f1f5c;
   --pop-radius: 0px;
-  --sky: #000000;
-  --strip: #000000;
-  --voice-paper: linear-gradient(160deg, #d6dffd 0%, #bccafb 60%, #a7b9f6 100%);
-  --outside-fg: #5b7ff0;
-  --outside-muted: rgba(91, 127, 240, 0.78);
-  --outside-faint: rgba(91, 127, 240, 0.56);
-  --outside-line: rgba(65, 105, 225, 0.35);
-  --outside-tab: rgba(65, 105, 225, 0.62);
-  --outside-bg: #03061a;
-  --edge-shade: rgba(0, 0, 0, 0.5);
+  --sky: #4169e1;
+  --voice-paper: linear-gradient(160deg, #f7f6f2 0%, #ecebe5 60%, #e0ded7 100%);
+  --outside-fg: #ffffff;
+  --outside-muted: rgba(255, 255, 255, 0.86);
+  --outside-faint: rgba(255, 255, 255, 0.66);
+  --outside-line: rgba(255, 255, 255, 0.42);
+  --outside-tab: rgba(255, 255, 255, 0.75);
+  --outside-bg: #4169e1;
+  --edge-shade: rgba(12, 28, 96, 0.28);
+  /* the surahs' art, printed in the blue: in greys, then given its hue (SurahCard, below) */
+  --art-tone: grayscale(1) brightness(0.92) contrast(1.12);
 }
-/* the panels: the black of the sheet's foot */
-:root[data-theme="royal"] .dark-scope {
-  --box-bg-solid: #01030c;
+@media (max-width: 767px) {
+  :root[data-theme="blue"] {
+    --box-shadow: 7px 7px 0 #0f1f5c;
+  }
 }
-/* the Arabic in the palest of the blues, the clearest on the dark */
-:root[data-theme="royal"] .quran {
-  color: #b2c1fd;
+/* the panels (Settings, Saved, About…): a slab of the blue, white type on it */
+:root[data-theme="blue"] .dark-scope {
+  --box-bg-solid: #3a5fd8;
+  --box-fg: #ffffff;
+  --box-muted: rgba(255, 255, 255, 0.88);
+  --box-faint: rgba(255, 255, 255, 0.7);
+  --box-line: rgba(255, 255, 255, 0.3);
+  --box-hover: rgba(255, 255, 255, 0.12);
+  --box-accent: #ffffff;
+  --box-context: rgba(255, 255, 255, 0.8);
+  --color-gold: #ffffff;
 }
-/* names: tall and narrow, as the specimen's title */
-:root[data-theme="royal"] .display {
-  font-style: normal;
-  font-stretch: 62.5%;
-  font-weight: 360;
-  letter-spacing: -0.004em;
-  line-height: 1.04;
+/* crop marks at the frame's corners, as on a proof (d3) */
+:root[data-theme="blue"] .frame-box::before {
+  content: "";
+  position: absolute;
+  inset: -20px;
+  pointer-events: none;
+  --c: rgba(255, 255, 255, 0.92);
+  --l: 13px;
+  --w: 1.5px;
+  background:
+    linear-gradient(var(--c), var(--c)) left top / var(--l) var(--w),
+    linear-gradient(var(--c), var(--c)) left top / var(--w) var(--l),
+    linear-gradient(var(--c), var(--c)) right top / var(--l) var(--w),
+    linear-gradient(var(--c), var(--c)) right top / var(--w) var(--l),
+    linear-gradient(var(--c), var(--c)) left bottom / var(--l) var(--w),
+    linear-gradient(var(--c), var(--c)) left bottom / var(--w) var(--l),
+    linear-gradient(var(--c), var(--c)) right bottom / var(--l) var(--w),
+    linear-gradient(var(--c), var(--c)) right bottom / var(--w) var(--l);
+  background-repeat: no-repeat;
 }
-:root[data-theme="royal"] .display.tabular-nums {
-  letter-spacing: 0;
+@media (max-width: 767px) {
+  :root[data-theme="blue"] .frame-box::before {
+    inset: -8px;
+    --l: 8px;
+  }
 }
-/* the reading: the same serif's text cut, narrow; the bracketed context in royal italics */
-:root[data-theme="royal"] .font-serif {
-  font-stretch: 84%;
+/* the Arabic in the ink; the cover's in the blue */
+:root[data-theme="blue"] .quran {
+  color: #0e1014;
 }
-/* labels: small italics in sentence case, as the specimen's captions */
-:root[data-theme="royal"] .label {
-  font-size: 12.5px;
+:root[data-theme="blue"] .cover-page .font-kufi {
+  color: #4169e1;
+}
+/* names: heavy and wide, leaning hard, as a box logo is lettered */
+:root[data-theme="blue"] .display {
   font-style: italic;
-  font-stretch: 84%;
-  letter-spacing: 0;
-  text-transform: none;
+  font-weight: 800;
+  font-stretch: 112%;
+  letter-spacing: -0.02em;
+  line-height: 1.02;
 }
-:root[data-theme="royal"] .label-sm {
-  font-size: 11.5px;
-  font-style: italic;
-  font-stretch: 84%;
-  letter-spacing: 0;
-  text-transform: none;
-}
-/* the passage's theme above the frame: a caption, in italics */
-:root[data-theme="royal"] .theme-tag.display {
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-stretch: 84%;
-  font-weight: 400;
+:root[data-theme="blue"] .display.tabular-nums {
   letter-spacing: 0;
 }
-/* what to press: a royal hairline, filled royal under the pointer */
-:root[data-theme="royal"] .btn-primary {
-  border: 1px solid #4169e1;
-  border-radius: 0;
-  background: transparent;
-  color: #7d9bf7;
-  transition: background-color 0.25s ease, color 0.25s ease;
-}
-:root[data-theme="royal"] .btn-primary:hover {
+/* the cover's name: white on a block of the blue */
+:root[data-theme="blue"] .cover-name {
+  padding: 0.16em 0.42em 0.12em;
   background: #4169e1;
-  color: #01030c;
+  color: #ffffff;
+  box-shadow: 5px 5px 0 #0e1014;
 }
-:root[data-theme="royal"] .btn-secondary {
-  border-color: var(--box-line);
+/* the passage's theme above the frame: blue on a white block */
+:root[data-theme="blue"] .theme-tag.display {
+  width: fit-content;
+  max-width: 100%;
+  padding: 0.12em 0.4em 0.08em;
+  background: #ffffff;
+  color: #4169e1;
+}
+/* the reading: the same grotesk's text weights; its context lighter, in italics, in blue */
+:root[data-theme="blue"] .font-serif {
+  font-stretch: 100%;
+  letter-spacing: -0.005em;
+}
+/* labels: a technical mono's small capitals */
+:root[data-theme="blue"] .label {
+  font-size: 9.5px;
+  font-weight: 500;
+  font-stretch: 87.5%;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+:root[data-theme="blue"] .label-sm {
+  font-size: 8.5px;
+  font-weight: 500;
+  font-stretch: 87.5%;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+/* what to press: stamped in the blue, a hard shadow under it that the press pushes in */
+:root[data-theme="blue"] .btn-primary {
+  border: 1.5px solid #0e1014;
+  border-radius: 0;
+  background: #4169e1;
+  color: #ffffff;
+  box-shadow: 4px 4px 0 #0e1014;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
+}
+:root[data-theme="blue"] .btn-primary:hover {
+  background: #3459d0;
+  color: #ffffff;
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 #0e1014;
+}
+:root[data-theme="blue"] .btn-primary:active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 #0e1014;
+}
+:root[data-theme="blue"] .dark-scope .btn-primary {
+  border-color: #ffffff;
+  background: #ffffff;
+  color: #4169e1;
+  box-shadow: 4px 4px 0 #0f1f5c;
+}
+:root[data-theme="blue"] .btn-secondary {
+  border-color: rgba(14, 16, 20, 0.5);
   border-radius: 0;
 }
-:root[data-theme="royal"] .pill,
-:root[data-theme="royal"] .pill .pill,
-:root[data-theme="royal"] .theme-pop,
-:root[data-theme="royal"] .theme-dialog,
-:root[data-theme="royal"] .surah-card {
+:root[data-theme="blue"] .pill,
+:root[data-theme="blue"] .pill .pill,
+:root[data-theme="blue"] .theme-pop,
+:root[data-theme="blue"] .theme-dialog,
+:root[data-theme="blue"] .surah-card {
   border-radius: 0;
 }
-:root[data-theme="royal"] .theme-pop {
-  border-color: rgba(65, 105, 225, 0.5);
+:root[data-theme="blue"] .theme-pop {
+  border: 1.5px solid #0e1014;
+  box-shadow: 6px 6px 0 #0f1f5c;
 }
-:root[data-theme="royal"] .search-input {
-  border: 1px solid rgba(65, 105, 225, 0.5);
+:root[data-theme="blue"] .search-input {
+  border: 1.5px solid #0e1014;
   border-radius: 0;
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-size: 15px;
-  font-stretch: 84%;
-  letter-spacing: 0;
-  text-transform: none;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-stretch: 87.5%;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
-:root[data-theme="royal"] .search-input:focus {
-  border: 1px solid #4169e1;
-  box-shadow: none;
+:root[data-theme="blue"] .search-input:focus {
+  border-color: #4169e1;
+  box-shadow: 3px 3px 0 #4169e1;
 }
-/* the surahs' art, printed in royal duotone: in greys, then given royal blue's hue */
-:root[data-theme="royal"] {
-  --art-tone: grayscale(1) brightness(0.86) contrast(1.08);
-}
-:root[data-theme="royal"] .surah-art {
+/* the surahs' cards: their art in the blue, their names heavy and leaning */
+:root[data-theme="blue"] .surah-art {
   isolation: isolate;
 }
-:root[data-theme="royal"] .surah-art::after {
+:root[data-theme="blue"] .surah-art::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -1712,31 +1858,58 @@ mark.hl.fresh {
   mix-blend-mode: color;
   pointer-events: none;
 }
-/* (and the glow behind each card's Arabic name, from the surah's own colours, royal too) */
-:root[data-theme="royal"] .surah-card .font-kufi {
-  text-shadow: 0 0 1.4em rgba(65, 105, 225, 0.7) !important;
+:root[data-theme="blue"] .surah-card .font-kufi {
+  text-shadow: 0 0 1.4em rgba(20, 40, 140, 0.7) !important;
 }
-:root[data-theme="royal"] .grain-local {
-  opacity: 0.08;
+:root[data-theme="blue"] .surah-card .font-serif {
+  font-weight: 800;
+  font-stretch: 112%;
+  letter-spacing: -0.02em;
 }
-:root[data-theme="royal"] ::selection {
-  background: rgba(65, 105, 225, 0.36);
+:root[data-theme="blue"] .grain-local {
+  opacity: 0.05;
 }
-:root[data-theme="royal"] svg.lucide {
-  stroke-width: 1.25px;
+:root[data-theme="blue"] ::selection {
+  background: rgba(65, 105, 225, 0.28);
 }
-/* the specimen's rows of captions (cover, reader): spread across, in small royal italics */
+:root[data-theme="blue"] .dark-scope ::selection {
+  background: rgba(255, 255, 255, 0.3);
+}
+:root[data-theme="blue"] svg.lucide {
+  stroke-width: 1.6px;
+}
+/* the measure of the Qur'an or the surah (cover, reader): a row of mono capitals across, in white */
 .spec-row {
   display: flex;
   justify-content: space-between;
   gap: 18px;
-  font-family: var(--font-serif);
-  font-style: italic;
-  font-stretch: 84%;
-  font-size: 12.5px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 500;
+  font-stretch: 87.5%;
+  letter-spacing: 0.08em;
   line-height: 1;
+  text-transform: uppercase;
   white-space: nowrap;
   color: var(--outside-muted);
+}
+/* the surah's number, large, on its side beside the frame's foot (as d2's "100") */
+.blue-num {
+  font-family: var(--font-display);
+  font-size: 92px;
+  font-style: italic;
+  font-weight: 900;
+  font-stretch: 125%;
+  line-height: 0.8;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+}
+@media (max-width: 1199px) {
+  .blue-num {
+    display: none;
+  }
 }
 
 /* ── opened from the home screen (html.standalone): the page runs under the status bar, nothing
@@ -1768,6 +1941,9 @@ html.ios-short body {
 }
 :root[data-theme="lunar"] {
   --strip: #03060a;
+}
+:root[data-theme="blue"] {
+  --strip: #3d63da;
 }
 :root[data-theme="mono"][data-sky="light"] {
   --strip: #dcd8d2;

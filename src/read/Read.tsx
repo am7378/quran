@@ -35,7 +35,7 @@ import { ReflectionPanel } from "./Reflection";
 import { SettingsPanel } from "./Settings";
 import { SurahSummary } from "./Summary";
 import { ShareDialog, type ShareContent } from "./Share";
-import { arabicFor, translationFor } from "./align";
+import { arabicFor, inProportion, translationFor } from "./align";
 import { NoteShareDialog } from "./NoteShare";
 import { BookText } from "./Book";
 import { VoiceRecorder } from "./VoiceNote";
@@ -59,6 +59,7 @@ import { CompleteMark } from "./Progress";
 import { FolderPop } from "./Folders";
 import { IndexView, INDEX_VIEWS, type IndexKind } from "@/pages/IndexViews";
 import { AyahPeek } from "./Peek";
+import { ayn, nameMarks } from "@/lib/names";
 
 const GLOSSED = ".gl, .saw, .hon"; // translation terms and honorifics with a meaning on hover
 // the settings an ayah is drawn with
@@ -290,6 +291,13 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     if (!data || !target.current) return;
     const t = target.current;
     target.current = null;
+    // a jump: in place before the first frame is drawn, so an ayah opened partway through a surah
+    // (8:60 from the index) never shows the surah's opening page on its way in. Only the start of a
+    // surah opens on that page
+    if (!t.smooth) {
+      scrollToAyah(t.ayah, false);
+      setActive(t.ayah);
+    }
     requestAnimationFrame(() => {
       scrollToAyah(t.ayah, t.smooth);
       setActive(t.ayah);
@@ -516,7 +524,9 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     if (!sc || !data || settings.view !== 1) return;
     const items = () => sc.querySelectorAll<HTMLElement>("[data-n]");
     // the ayah at the top of the frame, and how far into it the reader has scrolled
-    let anchor: { el: HTMLElement; off: number } | null = null;
+    // (within: the reader was inside the ayah's own length, reading down a long one, not on the
+    // way from it to the next)
+    let anchor: { el: HTMLElement; off: number; within: boolean } | null = null;
     const note = () => {
       const y = sc.scrollTop + 2;
       let cur: HTMLElement | null = null;
@@ -524,7 +534,8 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
         if (el.offsetTop <= y) cur = el;
         else break;
       }
-      anchor = cur ? { el: cur, off: sc.scrollTop - cur.offsetTop } : null;
+      const off = cur ? sc.scrollTop - cur.offsetTop : 0;
+      anchor = cur ? { el: cur, off, within: off <= Math.max(0, cur.offsetHeight - sc.clientHeight) + 1 } : null;
     };
     // the place is taken again only from the reader's own scrolling (a finger, the wheel, the keys,
     // and the glide or snap that follows), or when the page moves them itself (anchorNow): never
@@ -554,8 +565,11 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     const place = () => {
       const a = anchor;
       if (!a || !a.el.isConnected) return;
+      // reading down a long ayah that has grown shorter: kept within it. On the way from one ayah to
+      // the next (a swipe under way, the next one laying itself out), exactly where the finger has it:
+      // never pulled back to the top of the one being left
       const room = Math.max(0, a.el.offsetHeight - sc.clientHeight);
-      const want = a.el.offsetTop + Math.min(Math.max(0, a.off), room);
+      const want = a.el.offsetTop + (a.within ? Math.min(Math.max(0, a.off), room) : a.off);
       if (Math.abs(sc.scrollTop - want) < 1) return;
       placing = true;
       sc.scrollTop = want;
@@ -766,7 +780,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
 
   // what gets copied: the ayah, its translation and the reference — no translation name
   const ayahText = useCallback(
-    (v: Verse) => `${arabicText(v, settings.script)}\n\n${translationText(v, settings.translation, settings.showContext)}\n\n— ${surah.tc} ${surahN}:${v.n}`,
+    (v: Verse) => `${arabicText(v, settings.script)}\n\n${translationText(v, settings.translation, settings.showContext)}\n\n— ${ayn(surah.tc)} ${surahN}:${v.n}`,
     [settings.translation, settings.showContext, settings.script, surah, surahN],
   );
 
@@ -823,12 +837,17 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
         sky: settings.monoSky,
       } as const;
       if (h.field === "ar") {
-        const idx = aw.words.filter((w) => w.start >= h.start && w.end <= h.end).map((w) => w.i);
-        if (!idx.length) return;
+        // the words the highlight touches (a highlight can begin or end inside a word)
+        let idx = aw.words.filter((w) => w.end > h.start && w.start < h.end).map((w) => w.i);
+        if (!idx.length) idx = [0, aw.words.length - 1];
         const span: [number, number] = [Math.min(...idx), Math.max(...idx)];
-        setShare({ ...base, arabic: h.text, translation: whole, part: { side: "ar", other: trWords, guess: translationFor(v.m, span, trWords) } });
+        const guess = translationFor(v.m, span, trWords) ?? inProportion([span[0], span[1] + 1], aw.words.length, trWords.length);
+        setShare({ ...base, arabic: h.text, translation: whole, part: { side: "ar", other: trWords, guess } });
       } else {
-        setShare({ ...base, arabic: arabicText(v, settings.script), translation: spellHonorifics(h.text), part: { side: "tr", other: aw.words.map((w) => w.text), guess: arabicFor(v.m, h.text) } });
+        const other = aw.words.map((w) => w.text);
+        const len = translationPieces(v, tr).canon.length;
+        const guess = arabicFor(v.m, h.text) ?? inProportion([h.start, h.end], len, other.length);
+        setShare({ ...base, arabic: arabicText(v, settings.script), translation: spellHonorifics(h.text), part: { side: "tr", other, guess } });
       }
     },
     [data, settings.translation, settings.script, settings.theme, settings.boxTheme, settings.monoCard, settings.monoSky, surah, surahN],
@@ -1397,7 +1416,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     if (mark && h) {
       items.push({ type: "label", label: "Highlight" });
       items.push({ type: "item", label: "Colour…", icon: I(<Highlighter size={14} />), onSelect: () => openMenuFor(h.id, true) });
-      items.push({ type: "item", label: "Copy its words", icon: I(<Copy size={14} />), onSelect: () => copyText(`${h.text}\n— ${surah.tc} ${h.key}`).then((ok) => ok && flash("Highlight copied")) });
+      items.push({ type: "item", label: "Copy its words", icon: I(<Copy size={14} />), onSelect: () => copyText(`${h.text}\n— ${ayn(surah.tc)} ${h.key}`).then((ok) => ok && flash("Highlight copied")) });
       items.push({ type: "item", label: "Share this part", icon: I(<Share2 size={14} />), onSelect: () => openSharePart(h) });
       items.push({ type: "item", label: "Add a note to it", icon: I(<StickyNote size={14} />), onSelect: () => newNote(h.key, { hid: h.id, quote: h.text }) });
       items.push({ type: "item", label: "Record a voice note on it", icon: I(<Mic size={14} />), onSelect: () => setRecorder({ key: h.key, anchor: mark.getBoundingClientRect(), hid: h.id, quote: h.text }) });
@@ -1428,7 +1447,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       const done = !!useStore.getState().done[surahN];
       items.push({ type: "item", label: done ? "Completed · undo" : "Mark as completed", icon: I(<Check size={14} />), onSelect: () => sec.querySelector<HTMLElement>("button[aria-pressed]")?.click() });
       const next = surahs[surahN];
-      if (next) items.push({ type: "item", label: `Next · ${next.tc}`, icon: I(<ArrowRight size={14} />), onSelect: () => go(surahN + 1, 0) });
+      if (next) items.push({ type: "item", label: `Next · ${ayn(next.tc)}`, icon: I(<ArrowRight size={14} />), onSelect: () => go(surahN + 1, 0) });
       items.push({ type: "sep" });
     }
 
@@ -1459,8 +1478,8 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     }
     items.push({ type: "sep" });
     items.push({ type: "item", label: "Search", hint: "/", icon: I(<SearchIcon size={14} />), onSelect: () => setPanel("search") });
-    if (surahN > 1) items.push({ type: "item", label: `Previous · ${surahs[surahN - 2].tc}`, icon: I(<ArrowLeft size={14} />), onSelect: () => go(surahN - 1, 0) });
-    if (surahN < 114 && !(sec && n === surah.count + 1)) items.push({ type: "item", label: `Next · ${surahs[surahN].tc}`, icon: I(<ArrowRight size={14} />), onSelect: () => go(surahN + 1, 0) });
+    if (surahN > 1) items.push({ type: "item", label: `Previous · ${ayn(surahs[surahN - 2].tc)}`, icon: I(<ArrowLeft size={14} />), onSelect: () => go(surahN - 1, 0) });
+    if (surahN < 114 && !(sec && n === surah.count + 1)) items.push({ type: "item", label: `Next · ${ayn(surahs[surahN].tc)}`, icon: I(<ArrowRight size={14} />), onSelect: () => go(surahN + 1, 0) });
     items.push({ type: "item", label: "Surah index", icon: I(<LayoutGrid size={14} />), onSelect: () => onIndex(surahN, activeRef.current) });
     items.push({ type: "item", label: "Settings", icon: I(<Settings2 size={14} />), onSelect: () => setPanel("settings") });
     show();
@@ -1649,7 +1668,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
           onClick={onFrameClick}
           onMouseOver={onOver}
           onMouseOut={onOut}
-          aria-label={`${surah.tc}, ayat`}
+          aria-label={`${ayn(surah.tc)}, ayat`}
         >
           {data && (
             <>
@@ -1710,7 +1729,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
             </motion.div>
           )}
         </AnimatePresence>
-        {!data && !error && <Loading name={surah.tc} />}
+        {!data && !error && <Loading name={ayn(surah.tc)} />}
         {error && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 px-8 text-center">
             <p className="max-w-[40ch] font-serif text-[18px] text-[var(--box-muted)]">{error}</p>
@@ -1775,7 +1794,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
             at={menu?.at ?? null}
             onClose={() => setMenu(null)}
             onCopy={async (h) => {
-              (await copyText(`${h.text}\n— ${surah.tc} ${h.key}`)) && flash("Highlight copied");
+              (await copyText(`${h.text}\n— ${ayn(surah.tc)} ${h.key}`)) && flash("Highlight copied");
               setMenu(null);
             }}
             onNote={(h) => {
@@ -1842,14 +1861,20 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
           <div className={cn("absolute inset-0 transition-[opacity,visibility] duration-500", focus &&"pointer-events-none invisible opacity-0")}>
                 {/* the ayah's theme: one ayah at a time, with its translation showing (not the Arabic alone,
                     not scrolling freely; a book of the translation has its headings in the text) */}
-                {/* Royal: the surah's measure in a specimen's row of captions, above its theme */}
-                {settings.theme === "royal" && !mobile && data && data.v.length > 0 && (
-                  <div className="spec-row pointer-events-none absolute inset-x-0 bottom-full mb-[54px]" aria-hidden>
-                    <span>(surah {surahN})</span>
-                    <span>{surah.place === "makkah" ? "Makkan" : "Madinan"}</span>
-                    <span>{surah.count} ayat</span>
-                    <span>{data.v[0].j === data.v[data.v.length - 1].j ? `Juz ${data.v[0].j}` : `Juz ${data.v[0].j}–${data.v[data.v.length - 1].j}`}</span>
-                  </div>
+                {/* Blue: the surah's measure in a poster's row of captions above its theme, and its
+                    number large, turned on its side, beside the frame's foot */}
+                {settings.theme === "blue" && !mobile && data && data.v.length > 0 && (
+                  <>
+                    <div className="spec-row pointer-events-none absolute inset-x-0 bottom-full mb-[58px]" aria-hidden>
+                      <span>(Surah {surahN} of 114)</span>
+                      <span>{surah.place === "makkah" ? "Makkan" : "Madinan"}</span>
+                      <span>{surah.count} ayat</span>
+                      <span>{data.v[0].j === data.v[data.v.length - 1].j ? `Juz ${data.v[0].j} (of 30)` : `Juz ${data.v[0].j}–${data.v[data.v.length - 1].j} (of 30)`}</span>
+                    </div>
+                    <div className="blue-num pointer-events-none absolute bottom-0 right-full mr-6" aria-hidden>
+                      {pad3(surahN)}
+                    </div>
+                  </>
                 )}
                 <AnimatePresence mode="wait">
                   {settings.view === 1 && settings.readingMode !== "arabic" && theme && active >= 1 && !panel && !aboutOpen && (
@@ -2016,7 +2041,7 @@ function Opener({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.9, ease: EASE_OUT, delay: 0.55 }}
         >
-          {surah.tc}
+          {nameMarks(surah.tc)}
         </motion.span>
         <span className="label mt-3 text-[var(--box-muted)]">{surah.en}</span>
         {surah.bism && (
@@ -2090,7 +2115,7 @@ function FocusExit({ onExit }: { onExit: () => void }) {
 function Closing({ surah, next, onReflect, onNext }: { surah: Surah; next: Surah | null; onReflect: () => void; onNext: () => void }) {
   return (
     <section data-n={surah.count + 1} className="snap-item snap-page relative flex min-h-full flex-col items-center justify-center gap-8 px-8 text-center">
-      <div className="label text-[var(--box-faint)]">End of {surah.tc}</div>
+      <div className="label text-[var(--box-faint)]">End of {nameMarks(surah.tc)}</div>
       <div className="display font-serif text-[26px] italic md:text-[34px]">What did this surah leave with you?</div>
       <CompleteMark surah={surah} />
       <div className="flex flex-wrap items-center justify-center gap-3">
@@ -2100,7 +2125,7 @@ function Closing({ surah, next, onReflect, onNext }: { surah: Surah; next: Surah
         </button>
         {next && (
           <button type="button" onClick={onNext} className="btn-secondary label border border-[var(--box-line)] px-3 py-2 text-[var(--box-muted)] transition-colors hover:border-[var(--box-fg)] hover:text-[var(--box-fg)]">
-            Next · {pad3(next.n)} {next.tc} →
+            Next · {pad3(next.n)} {nameMarks(next.tc)} →
           </button>
         )}
       </div>
@@ -2294,7 +2319,7 @@ function FitName({ text, className }: { text: string; className?: string }) {
   }, [text]);
   return (
     <span ref={ref} className={className}>
-      {text}
+      {nameMarks(text)}
     </span>
   );
 }
@@ -2402,7 +2427,7 @@ function SearchPanelBody({
               )}
             >
               <span className="font-mono text-[10px] tabular-nums opacity-60">{pad3(s.n)}</span>
-              <span className="truncate font-serif text-[15px] italic">{s.tc}</span>
+              <span className="truncate font-serif text-[15px] italic">{nameMarks(s.tc)}</span>
               <span className="ml-auto font-kufi text-[13px] opacity-60" dir="rtl">
                 {s.ar}
               </span>

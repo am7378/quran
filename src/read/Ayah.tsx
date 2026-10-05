@@ -26,7 +26,6 @@ type Props = {
   isLast?: boolean;
 };
 
-const FIT_FLOOR = 0.9; // long ayahs shrink a little, then scroll: type never gets small
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
 
 export const AyahSection = memo(function AyahSection({
@@ -88,58 +87,33 @@ export const AyahSection = memo(function AyahSection({
   const trWrap = useRef<HTMLDivElement>(null);
   const trRef = useRef<HTMLParagraphElement>(null);
 
-  /* ── fitting a long ayah into one view ─────────────────────────
-     first the spacing tightens, then the type shrinks a little (never below
-     FIT_FLOOR); what still does not fit scrolls within the ayah. In the
-     scrolling view every ayah keeps the same type size. */
-  const [fit, setFit] = useState(1);
-  const [dense, setDense] = useState(false);
+  /* ── every ayah at the reader's own size, however long: never made smaller to fit the frame. In
+     the one-ayah view one too long for the frame scrolls within itself, down to a mark at its end
+     (and only a further swipe goes on to the next). ── */
   const [over, setOver] = useState(false);
-
-  const arBase = arabicSize(v, view, mobile, settings.arabicScale * (settings.readingMode === "arabic" ? 1.18 : 1));
-  const trBase = translationSize(tr.canon, view, mobile, settings.transScale * (settings.readingMode === "translation" ? 1.15 : 1));
-  // however long the ayah, the Arabic stays a comfortable size (what still does not fit scrolls)
-  const arMin = one ? (mobile ? 21 : 27) * settings.arabicScale * (settings.readingMode === "arabic" ? 1.1 : 1) : 0;
-  const arPx = Math.round(Math.max(arBase * fit, Math.min(arBase, arMin)) * 10) / 10;
-  const trPx = one ? Math.round(Math.max((mobile ? 15 : 16) * settings.transScale, trBase * (0.3 + 0.7 * fit)) * 10) / 10 : trBase;
+  const arPx = arabicSize(v, view, mobile, settings.arabicScale * (settings.readingMode === "arabic" ? 1.18 : 1));
+  const trPx = translationSize(tr.canon, view, mobile, settings.transScale * (settings.readingMode === "translation" ? 1.15 : 1));
 
   const sig = `${view}|${settings.readingMode}|${settings.translation}|${settings.also.join(",")}|${settings.script}|${settings.arabicSpacing}|${settings.arabicScale}|${settings.transScale}|${mobile}`;
-  const last = useRef({ sig: "", viewH: 0, steps: 0 });
   useLayoutEffect(() => {
-    const L = last.current;
-    if (L.sig !== sig || Math.abs(L.viewH - viewH) > 40) {
-      L.sig = sig;
-      L.viewH = viewH;
-      L.steps = 0;
-      if (fit !== 1 || dense || over) {
-        setFit(1);
-        setDense(false);
-        setOver(false);
-        return;
-      }
-    }
     const el = ref.current;
-    if (el && one && viewH) {
-      // not laid out yet: measured when it comes near (shownTick), or now, alone, if it is
-      // already beside the one being read (a jump lands before the browser has laid it out)
-      const skipped = isSkipped(el);
-      if (skipped && !near) return;
-      if (skipped) el.style.contentVisibility = "visible";
-      const h = el.offsetHeight;
-      if (skipped) el.style.contentVisibility = "";
-      // (viewH is rounded to fewer steps, for fewer redraws: the fit is to the frame's exact height,
-      // so an ayah never needs a few pixels' scroll)
-      const room = el.closest<HTMLElement>(".snap-scroller")?.clientHeight || viewH;
-      if (h > room + 1) {
-        if (!dense) return setDense(true);
-        if (fit > FIT_FLOOR + 0.001 && L.steps < 5) {
-          L.steps++;
-          return setFit(Math.max(FIT_FLOOR, fit * Math.max(0.9, (viewH / h) ** 0.9)));
-        }
-        if (!over) return setOver(true);
-      }
+    if (!el || !one || !viewH) {
+      if (over) setOver(false);
+      return;
     }
-  }, [sig, fit, dense, over, one, viewH, shownTick, near]); // eslint-disable-line react-hooks/exhaustive-deps
+    // not laid out yet: measured when it comes near (shownTick), or now, alone, if it is
+    // already beside the one being read (a jump lands before the browser has laid it out)
+    const skipped = isSkipped(el);
+    if (skipped && !near) return;
+    if (skipped) el.style.contentVisibility = "visible";
+    // (without the end mark, which is there only because it is long)
+    const mark = el.querySelector<HTMLElement>("[data-end-mark]");
+    const h = el.offsetHeight - (mark ? mark.offsetHeight + 36 : 0);
+    if (skipped) el.style.contentVisibility = "";
+    const room = el.closest<HTMLElement>(".snap-scroller")?.clientHeight || viewH;
+    const o = h > room + 1;
+    if (o !== over) setOver(o);
+  }, [sig, settings.showContext, over, one, viewH, shownTick, near]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── context on and off. In the one-ayah view the old text fades out, the new
      one fades in, and the ayah glides to its new centre; only transforms and
@@ -249,7 +223,7 @@ export const AyahSection = memo(function AyahSection({
       data-field="ar"
       data-key={key}
       className={cn("quran text-right text-[var(--box-fg)]", settings.script === "indopak" && "indopak", settings.wordHover && "word-hover")}
-      style={{ fontSize: arPx, lineHeight: close ? (one ? (dense ? 1.78 : 1.88) : 1.82) : one ? (dense ? 1.95 : 2.1) : 2 }}
+      style={{ fontSize: arPx, lineHeight: close ? (one ? 1.88 : 1.82) : one ? 2.1 : 2 }}
       lang="ar"
     >
       {renderArabic(
@@ -271,7 +245,7 @@ export const AyahSection = memo(function AyahSection({
         data-key={key}
         dir="ltr"
         className={cn("text-left font-serif text-[var(--box-fg)]", !showAr && "mx-auto max-w-[62ch]")}
-        style={{ fontSize: `calc(${trPx}px * var(--read-scale, 1))`, lineHeight: one && dense ? 1.55 : 1.6 }}
+        style={{ fontSize: `calc(${trPx}px * var(--read-scale, 1))`, lineHeight: 1.6 }}
       >
         {!showAr && (
           <span className="label mb-3 block text-[var(--box-faint)] tabular-nums">
@@ -352,7 +326,7 @@ export const AyahSection = memo(function AyahSection({
               showAr ? "min-h-[252px] md:min-h-[260px]" : "min-h-[232px] md:min-h-[240px]",
             ),
       )}
-      style={{ paddingBlock: one ? (dense ? "3%" : "6%") : undefined, containIntrinsicSize: `auto ${hold}px` }}
+      style={{ paddingBlock: one ? "6%" : undefined, containIntrinsicSize: `auto ${hold}px` }}
       aria-label={`Ayah ${key}`}
     >
       <div data-inner>
@@ -364,7 +338,7 @@ export const AyahSection = memo(function AyahSection({
         {more}
         {/* an ayah too long for the frame: where it ends is plain to see */}
         {one && over && (
-          <div className="label-sm mt-9 flex items-center justify-center gap-3 text-[var(--box-faint)]" dir="ltr" aria-hidden>
+          <div data-end-mark className="label-sm mt-9 flex items-center justify-center gap-3 text-[var(--box-faint)]" dir="ltr" aria-hidden>
             <span className="h-px w-10 bg-[var(--box-line)]" />
             End of {key}
             <span className="h-px w-10 bg-[var(--box-line)]" />

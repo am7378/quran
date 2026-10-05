@@ -4,6 +4,7 @@ import { pad3 } from "@/lib/data";
 import { themeOf } from "@/lib/surahThemes";
 import { MotifArt } from "./Motif";
 import { cn } from "@/lib/utils";
+import { ayn, nameMarks } from "@/lib/names";
 
 /** The blurred artwork alone — also used for the zoom into the reading page. */
 export const SurahArt = memo(function SurahArt({ n, blur = 9, className }: { n: number; blur?: number; className?: string }) {
@@ -44,7 +45,7 @@ export const SurahCard = memo(function SurahCard({ surah, front }: { surah: Sura
           >
             {surah.ar}
           </span>
-          <span className="mt-[0.9em] font-serif text-[1.85em] leading-[1.05] italic text-white">{surah.tc}</span>
+          <span className="mt-[0.9em] font-serif text-[1.85em] leading-[1.05] italic text-white">{nameMarks(surah.tc)}</span>
           <span className="font-mono text-[0.85em] uppercase tracking-[0.16em] text-white/75">{surah.en}</span>
         </div>
         <div className="flex items-end justify-between">

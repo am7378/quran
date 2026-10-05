@@ -19,6 +19,7 @@ export function watchSounds() {
   const wake = () => wakeSound();
   const onClick = (e: MouseEvent) => {
     if (!e.isTrusted) return;
+    wake(); // (inside the click: allowed to start sound everywhere)
     const el = (e.target as HTMLElement | null)?.closest?.<HTMLElement>(PRESSABLE);
     if (!el) return;
     if ((el as HTMLButtonElement).disabled || el.getAttribute("aria-disabled") === "true") return;
@@ -35,7 +36,9 @@ export function watchSounds() {
     sfx("tap");
   };
   const onKey = (e: KeyboardEvent) => {
-    if (!e.isTrusted || e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
+    if (!e.isTrusted) return;
+    wake();
+    if (e.isComposing || e.ctrlKey || e.metaKey || e.altKey) return;
     const t = e.target as HTMLElement | null;
     if (!t?.closest?.(TYPING)) return;
     const input = t as HTMLInputElement;
@@ -43,11 +46,16 @@ export function watchSounds() {
     if (e.key.length === 1 || e.key === "Backspace" || e.key === "Enter" || e.key === "Delete") sfx("key");
   };
 
+  // (down for a computer, where that is allowed; the lift for a phone, where only it is)
   window.addEventListener("pointerdown", wake, { capture: true, passive: true });
+  window.addEventListener("pointerup", wake, { capture: true, passive: true });
+  window.addEventListener("touchend", wake, { capture: true, passive: true });
   document.addEventListener("click", onClick, true);
   document.addEventListener("keydown", onKey, true);
   return () => {
     window.removeEventListener("pointerdown", wake, true);
+    window.removeEventListener("pointerup", wake, true);
+    window.removeEventListener("touchend", wake, true);
     document.removeEventListener("click", onClick, true);
     document.removeEventListener("keydown", onKey, true);
   };

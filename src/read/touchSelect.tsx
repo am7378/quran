@@ -49,6 +49,112 @@ function before(a: Caret, b: Caret) {
   return r.comparePoint(b.node, b.offset) > 0;
 }
 
+/* ── the lens: a finger choosing words covers them, so a small round glass above it shows them
+   larger, the words chosen marked in it and a dot where the finger is, the way a loupe is held
+   over print. Made once as the press is taken (a copy of the ayah's text, in its own type and
+   colours), then only moved: no layout of the page while the finger draws. ── */
+const MAG = 1.6;
+const LENS = 118;
+let varNamesCache: string[] | null = null;
+// the site's own custom properties (colours, faces): the copy outside the frame wears the same
+function varNames() {
+  if (varNamesCache) return varNamesCache;
+  const names = new Set<string>();
+  const walk = (rules: CSSRuleList) => {
+    for (const r of Array.from(rules)) {
+      if (r instanceof CSSStyleRule) {
+        for (let i = 0; i < r.style.length; i++) {
+          const p = r.style[i];
+          if (p.startsWith("--") && !p.startsWith("--tw-")) names.add(p);
+        }
+      } else if ("cssRules" in r) walk((r as CSSGroupingRule).cssRules);
+    }
+  };
+  for (const sheet of Array.from(document.styleSheets)) {
+    try {
+      walk(sheet.cssRules);
+    } catch {
+      /* another origin's */
+    }
+  }
+  return (varNamesCache = [...names]);
+}
+
+function makeLens(field: HTMLElement) {
+  const cs = getComputedStyle(field);
+  const lens = document.createElement("div");
+  lens.className = "touch-lens";
+  lens.setAttribute("aria-hidden", "true");
+  for (const v of varNames()) {
+    const val = cs.getPropertyValue(v);
+    if (val) lens.style.setProperty(v, val);
+  }
+  const glass = document.createElement("div");
+  glass.className = "touch-lens-glass";
+  glass.style.background = cs.getPropertyValue("--box-bg-solid").trim() || "#fff";
+  const inner = document.createElement("div");
+  inner.className = "touch-lens-inner";
+  inner.style.transform = `scale(${MAG})`;
+  const copy = field.cloneNode(true) as HTMLElement;
+  // (no copy answers the page's own look-ups for its ayahs)
+  for (const x of [copy, ...copy.querySelectorAll<HTMLElement>("[data-field], [data-key], [data-hid], [id]")])
+    ["data-field", "data-key", "data-hid", "id"].forEach((a) => x.removeAttribute(a));
+  Object.assign(copy.style, {
+    margin: "0",
+    width: `${field.getBoundingClientRect().width}px`,
+    maxWidth: "none",
+    fontFamily: cs.fontFamily,
+    fontSize: cs.fontSize,
+    fontWeight: cs.fontWeight,
+    fontStyle: cs.fontStyle,
+    fontStretch: cs.fontStretch,
+    lineHeight: cs.lineHeight,
+    letterSpacing: cs.letterSpacing,
+    wordSpacing: cs.wordSpacing,
+    color: cs.color,
+    direction: cs.direction,
+    textAlign: cs.textAlign,
+  });
+  const picks = document.createElement("div");
+  picks.className = "touch-lens-picks";
+  const dot = document.createElement("div");
+  dot.className = "touch-lens-dot";
+  inner.append(picks, copy);
+  glass.append(inner, dot);
+  lens.append(glass);
+  document.body.append(lens);
+  glass.animate([{ transform: "scale(0.55)", opacity: 0 }, { transform: "none", opacity: 1 }], { duration: 220, easing: "cubic-bezier(0.22, 1.2, 0.36, 1)" });
+
+  /** the finger at (x, y), the words chosen `rects` (on the screen) */
+  const show = (x: number, y: number, rects: DOMRect[]) => {
+    const f = field.getBoundingClientRect();
+    const W = window.innerWidth, r = LENS / 2;
+    // above the finger; near the top of the screen, beside it instead (never under the hand)
+    let cx = x, cy = y - 104;
+    if (cy - r < 8) {
+      cx = x + (x < W / 2 ? 1 : -1) * (LENS * 0.95);
+      cy = Math.max(r + 8, y - 24);
+    }
+    cx = Math.max(r + 6, Math.min(W - r - 6, cx));
+    lens.style.transform = `translate3d(${cx - r}px, ${cy - r}px, 0)`;
+    inner.style.transform = `translate3d(${r - (x - f.left) * MAG}px, ${r - (y - f.top) * MAG}px, 0) scale(${MAG})`;
+    picks.replaceChildren(
+      ...rects.map((q) => {
+        const d = document.createElement("div");
+        d.className = "touch-pick";
+        Object.assign(d.style, { position: "absolute", left: `${q.left - f.left}px`, top: `${q.top - f.top}px`, width: `${q.width}px`, height: `${q.height}px` });
+        return d;
+      }),
+    );
+  };
+  const hide = () => {
+    const a = glass.animate([{ transform: "none", opacity: 1 }, { transform: "scale(0.7)", opacity: 0 }], { duration: 140, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "forwards" });
+    a.onfinish = () => lens.remove();
+    a.oncancel = () => lens.remove();
+  };
+  return { show, hide };
+}
+
 export function useTouchSelect({
   root,
   onDone,
@@ -89,6 +195,7 @@ export function useTouchSelect({
       let focus = w;
       let px = x, py = y;
       let raf = 0, scrolling = 0;
+      const lens = makeLens(field);
       const selected = () => {
         const s = before(focus.start, anchor.start) ? focus.start : anchor.start;
         const en = before(anchor.end, focus.end) ? focus.end : anchor.end;
@@ -96,7 +203,9 @@ export function useTouchSelect({
       };
       const paint = () => {
         raf = 0;
-        setRects([...selected().getClientRects()].filter((r) => r.width > 0.5));
+        const rs = [...selected().getClientRects()].filter((r) => r.width > 0.5);
+        setRects(rs);
+        lens.show(px, py, rs);
       };
       const follow = () => {
         const c2 = caretAt(px, py);
@@ -130,6 +239,7 @@ export function useTouchSelect({
         document.removeEventListener("touchend", lift);
         document.removeEventListener("touchcancel", finish);
         setRects([]);
+        lens.hide();
         stop = null;
       };
       const lift = () => {

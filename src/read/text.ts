@@ -145,19 +145,14 @@ export function snapToWords(words: Word[], [s, e]: [number, number]): [number, n
 
 /** Arabic font size by length, so short ayahs are monumental and long ones fit. */
 /** Arabic type size. One ayah per view: sized to the ayah's length. Scrolling: one size for every ayah. */
-export function arabicSize(v: Verse, view: 1 | 3, mobile: boolean, scale: number) {
+/* One size for every ayah, long or short: the reader's own sizes (Settings) and nothing else. An
+   ayah is never made smaller to fit the frame; one too long for it scrolls (Ayah.tsx). */
+export function arabicSize(_v: Verse, view: 1 | 3, mobile: boolean, scale: number) {
   if (view === 3) return Math.round((mobile ? 26 : 31) * scale);
-  const len = v.a.join(" ").length;
-  // the longest ayahs step down too, but never below a size that reads easily (27px, 21px on a phone)
-  let px = len < 45 ? 50 : len < 100 ? 42 : len < 200 ? 36 : len < 380 ? 31 : len < 700 ? 28 : 27;
-  if (mobile) px = Math.max(px * 0.72, 21);
-  return Math.round(px * scale);
+  return Math.round((mobile ? 29 : 38) * scale);
 }
 
-export function translationSize(text: string, view: 1 | 3, mobile: boolean, scale: number) {
+export function translationSize(_text: string, view: 1 | 3, mobile: boolean, scale: number) {
   if (view === 3) return Math.round((mobile ? 15.5 : 17.5) * scale * 10) / 10;
-  const len = text.length;
-  let px = len < 140 ? 23 : len < 380 ? 20 : len < 800 ? 18 : 16.5;
-  if (mobile) px *= 0.86;
-  return Math.round(px * scale * 10) / 10;
+  return Math.round((mobile ? 17.5 : 20) * scale * 10) / 10;
 }

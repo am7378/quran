@@ -4,6 +4,7 @@ import { ChevronDown, Search } from "lucide-react";
 import { arabicText, loadSummaries, pad3, translationText, TRANSLATIONS, type Surah, type SummarySection, type Verse } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { EASE_OUT, cn } from "@/lib/utils";
+import { ayn, nameMarks } from "@/lib/names";
 
 /**
  * The index, seen other ways than the ring of surahs: by juz, by where each surah was revealed,
@@ -113,7 +114,7 @@ function SurahLine({ s, right, onClick, open }: { s: Surah; right?: ReactNode; o
     <button type="button" onClick={(e) => onClick(e)} aria-expanded={folds ? open : undefined} className="group flex w-full items-center gap-3 border-t border-[var(--box-line)] py-2.5 text-left transition-colors hover:bg-[var(--box-hover)]">
       {folds && <Fold open={!!open} />}
       <span className="w-[3.2ch] shrink-0 font-mono text-[11px] text-[var(--box-faint)] tabular-nums">{pad3(s.n)}</span>
-      <span className="min-w-0 flex-1 truncate font-serif text-[17px] italic">{s.tc}</span>
+      <span className="min-w-0 flex-1 truncate font-serif text-[17px] italic">{nameMarks(s.tc)}</span>
       <span className="font-kufi text-[15px] text-[var(--box-muted)]" dir="rtl">
         {s.ar}
       </span>
@@ -223,7 +224,7 @@ function JuzView({ surahs, juz, onOpen }: { surahs: Surah[]; juz: Record<string,
             <div className="mt-1.5 flex flex-wrap gap-x-2 gap-y-0.5">
               {p.list.map((n) => (
                 <button key={n} type="button" onClick={() => onOpen(n, n === p.s ? p.a : 1)} className="text-[12.5px] text-[var(--box-muted)] transition-colors hover:text-[var(--box-fg)]">
-                  {surahs[n - 1].tc}
+                  {nameMarks(surahs[n - 1].tc)}
                 </button>
               ))}
             </div>
@@ -419,7 +420,7 @@ function ThemeHits({ themes, needle, surahs, onOpen }: { themes: Record<string, 
             {s}:{a}
           </span>
           <span className="min-w-0 flex-1 text-[14.5px]">{h}</span>
-          <span className="hidden shrink-0 font-serif text-[13px] italic text-[var(--box-muted)] sm:inline">{surahs[s - 1]?.tc}</span>
+          <span className="hidden shrink-0 font-serif text-[13px] italic text-[var(--box-muted)] sm:inline">{nameMarks(surahs[s - 1]?.tc)}</span>
         </button>
       ))}
     </div>
@@ -450,7 +451,7 @@ function DuasView({ surahs, onOpen }: { surahs: Surah[]; onOpen: Open }) {
                   <div key={`${r[0]}:${r[1]}`} className="border-t border-[var(--box-line)] py-4">
                     <div className="mb-2 flex items-baseline justify-between gap-3">
                       <span className="label text-[var(--box-faint)]">
-                        {surahs[r[0] - 1]?.tc} · {r[0]}:{r[1]}
+                        {nameMarks(surahs[r[0] - 1]?.tc)} · {r[0]}:{r[1]}
                         {r[2] ? `–${r[2]}` : ""}
                       </span>
                       <button type="button" onClick={() => onOpen(r[0], r[1])} className="label-sm text-[var(--box-muted)] hover:text-[var(--box-fg)]">
@@ -489,7 +490,7 @@ function SajdahView({ surahs, onOpen }: { surahs: Surah[]; onOpen: Open }) {
             <div className="mb-2 flex items-baseline justify-between gap-3">
               <span className="flex items-baseline gap-3">
                 <span className="font-mono text-[11px] tabular-nums text-[var(--box-faint)]">{String(i + 1).padStart(2, "0")}</span>
-                <span className="font-serif text-[17px] italic">{surahs[s - 1]?.tc}</span>
+                <span className="font-serif text-[17px] italic">{nameMarks(surahs[s - 1]?.tc)}</span>
                 <span className="label-sm tabular-nums text-[var(--box-faint)]">
                   {s}:{a}
                 </span>
@@ -527,7 +528,7 @@ function SummariesView({ surahs, onOpen, mobile }: { surahs: Surah[]; onOpen: Op
         </button>
       )}
       <div className="flex items-baseline justify-between gap-3">
-        <span className="display font-serif text-[30px] leading-tight italic">{cur.tc}</span>
+        <span className="display font-serif text-[30px] leading-tight italic">{nameMarks(cur.tc)}</span>
         <span className="font-kufi text-[22px] text-[var(--box-muted)]" dir="rtl">
           {cur.ar}
         </span>
@@ -561,7 +562,7 @@ function SummariesView({ surahs, onOpen, mobile }: { surahs: Surah[]; onOpen: Op
         {!(all[String(cur.n)] ?? []).length && <p className="font-serif text-[16px] text-[var(--box-muted)]">Quraan Made Easy gives no introduction for this surah.</p>}
       </div>
       <button type="button" onClick={() => onOpen(cur.n, 1)} className="btn-primary label mt-8 border border-[var(--box-fg)] px-3 py-2 transition-colors hover:bg-[var(--box-fg)] hover:text-[var(--box-bg-solid)]">
-        Read {cur.tc} →
+        Read {nameMarks(cur.tc)} →
       </button>
     </motion.div>
   );
@@ -580,7 +581,7 @@ function SummariesView({ surahs, onOpen, mobile }: { surahs: Surah[]; onOpen: Op
               className={cn("flex w-full items-baseline gap-3 border-t border-[var(--box-line)] py-2 text-left transition-colors hover:bg-[var(--box-hover)]", pick === s.n && "bg-[var(--box-hover)]")}
             >
               <span className="w-[3.2ch] shrink-0 font-mono text-[11px] tabular-nums text-[var(--box-faint)]">{pad3(s.n)}</span>
-              <span className={cn("min-w-0 flex-1 truncate font-serif text-[16px] italic", pick === s.n && "text-[var(--color-gold)]")}>{s.tc}</span>
+              <span className={cn("min-w-0 flex-1 truncate font-serif text-[16px] italic", pick === s.n && "text-[var(--color-gold)]")}>{nameMarks(s.tc)}</span>
             </button>
           ))}
         </div>

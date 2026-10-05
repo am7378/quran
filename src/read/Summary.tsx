@@ -4,6 +4,7 @@ import { Undo2 } from "lucide-react";
 import { loadSummaries, pad3, type Surah, type SurahData, type SummarySection } from "@/lib/data";
 import { SurahArt } from "@/components/SurahCard";
 import { EASE_OUT, cn } from "@/lib/utils";
+import { ayn, nameMarks } from "@/lib/names";
 
 /**
  * The back of the frame: what the surah is about — its connection to the
@@ -70,7 +71,7 @@ export function SurahSummary({
           <span className={cn("font-kufi leading-none", mobile ? "text-[34px]" : "text-[44px]")} dir="rtl" lang="ar">
             {surah.ar}
           </span>
-          <span className={cn("display font-serif italic", mobile ? "text-[18px]" : "text-[22px]")}>{surah.tc}</span>
+          <span className={cn("display font-serif italic", mobile ? "text-[18px]" : "text-[22px]")}>{nameMarks(surah.tc)}</span>
         </div>
       </div>
       {/* each detail under its name, all to the left, so a long meaning has room */}
@@ -98,7 +99,7 @@ export function SurahSummary({
       <div className="relative z-10 flex h-12 shrink-0 items-center justify-between gap-3 border-b border-[var(--box-line)] pl-5 pr-2 md:h-[52px] md:pl-7">
         <div className="flex min-w-0 items-baseline gap-2.5">
           <span className="font-mono text-[11px] text-[var(--box-faint)] tabular-nums">{pad3(surah.n)}</span>
-          <span className="-my-[0.15em] truncate py-[0.15em] font-serif text-[18px] italic leading-[1.1] md:text-[20px]">{surah.tc}</span>
+          <span className="-my-[0.15em] truncate py-[0.15em] font-serif text-[18px] italic leading-[1.1] md:text-[20px]">{nameMarks(surah.tc)}</span>
           <span className="label hidden text-[var(--box-faint)] sm:inline">About this surah</span>
         </div>
       </div>
@@ -123,7 +124,7 @@ export function SurahSummary({
             {failed && <p className="font-serif text-[17px] text-[var(--box-muted)]">The summary didn't load. Check your connection and turn the frame again.</p>}
             {sections?.length === 0 && (
               <p className="font-serif text-[18px] leading-relaxed text-[var(--box-muted)]">
-                {surah.tc} opens the Qur'an and is recited in every unit of prayer. Its themes are listed below.
+                {nameMarks(surah.tc)} opens the Qur'an and is recited in every unit of prayer. Its themes are listed below.
               </p>
             )}
             {sections?.map((s, i) => (
@@ -192,7 +193,7 @@ export function SurahSummary({
                 className="btn-primary pointer-events-auto inline-flex items-center gap-2.5 border border-[var(--box-fg)]/60 bg-[var(--panel-bg)] px-4 py-3 transition-colors hover:border-[var(--box-fg)] hover:bg-[var(--box-fg)] hover:text-[var(--box-bg-solid)] active:bg-[var(--box-hover)]"
               >
                 <Undo2 size={14} strokeWidth={1.6} />
-                <span className="label">{atStart ? `Begin ${surah.tc} · ayah 1` : "Back to the ayahs"}</span>
+                <span className="label">{atStart ? `Begin ${ayn(surah.tc)} · ayah 1` : "Back to the ayahs"}</span>
               </button>
             </div>
           </div>

@@ -4,6 +4,7 @@ import type { Surah } from "@/lib/data";
 import { pad3 } from "@/lib/data";
 import { searchDirect, searchText, type Result } from "@/lib/search";
 import { cn, EASE_OUT } from "@/lib/utils";
+import { ayn, nameMarks } from "@/lib/names";
 
 type Props = {
   surahs: Surah[];
@@ -190,7 +191,7 @@ function ResultBody({ r }: { r: Result }) {
       <span className="flex min-w-0 flex-1 items-baseline justify-between gap-2">
         <span className="min-w-0">
           <span className="font-mono text-[11px] text-[var(--box-faint)] tabular-nums">{pad3(r.surah.n)}</span>{" "}
-          <span className="font-serif text-[16px] italic">{r.surah.tc}</span>{" "}
+          <span className="font-serif text-[16px] italic">{nameMarks(r.surah.tc)}</span>{" "}
           <span className="label-sm text-[var(--box-muted)]">{r.surah.en}</span>
         </span>
         <span className="font-kufi text-[15px] text-[var(--box-muted)]" dir="rtl">
@@ -204,7 +205,7 @@ function ResultBody({ r }: { r: Result }) {
         <span className="font-mono text-[12px] tabular-nums">
           {r.surah.n}:{r.ayah}
         </span>{" "}
-        <span className="font-serif text-[16px] italic">{r.surah.tc}</span>{" "}
+        <span className="font-serif text-[16px] italic">{nameMarks(r.surah.tc)}</span>{" "}
         <span className="label-sm text-[var(--box-muted)]">
           ayah {r.ayah} of {r.surah.count}
         </span>
@@ -215,7 +216,7 @@ function ResultBody({ r }: { r: Result }) {
       <span className="min-w-0 flex-1">
         <span className="font-serif text-[16px] italic">Juz {r.juz}</span>{" "}
         <span className="label-sm text-[var(--box-muted)]">
-          begins at {r.surah.n}:{r.ayah} · {r.surah.tc}
+          begins at {r.surah.n}:{r.ayah} · {nameMarks(r.surah.tc)}
         </span>
       </span>
     );
@@ -239,7 +240,7 @@ function ResultBody({ r }: { r: Result }) {
       <span className="font-mono text-[12px] tabular-nums">
         {r.surah.n}:{r.ayah}
       </span>{" "}
-      <span className="label-sm text-[var(--box-muted)]">{r.surah.tc}</span>
+      <span className="label-sm text-[var(--box-muted)]">{nameMarks(r.surah.tc)}</span>
       <span className="mt-0.5 block font-serif text-[14.5px] leading-snug text-[var(--box-muted)]" dir="auto">
         {parts}
       </span>

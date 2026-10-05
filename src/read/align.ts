@@ -64,6 +64,18 @@ export function translationFor(meanings: string[], [a, b]: [number, number], trW
   return [i, j];
 }
 
+/**
+ * No guess from the meanings (too few of them say anything): the same stretch of the other side, in
+ * proportion, `[from, to)` of `total` → words `[i, j]` of `count`. Only a first mark, for the reader
+ * to move; never the whole ayah in place of the part.
+ */
+export function inProportion([from, to]: [number, number], total: number, count: number): [number, number] {
+  if (count <= 0 || total <= 0) return [0, Math.max(0, count - 1)];
+  const i = Math.max(0, Math.min(count - 1, Math.floor((from / total) * count)));
+  const j = Math.max(i, Math.min(count - 1, Math.ceil((to / total) * count) - 1));
+  return [i, j];
+}
+
 /** Some of the translation's words → the run of Arabic words whose meanings say them. */
 export function arabicFor(meanings: string[], excerpt: string): [number, number] | null {
   const want = new Set(tokens(excerpt));

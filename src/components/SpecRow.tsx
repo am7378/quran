@@ -3,9 +3,9 @@ import type { Surah } from "@/lib/data";
 import { EASE_OUT } from "@/lib/utils";
 
 /**
- * Royal's cover: a specimen sheet's row of captions across the top of the screen, as the
- * inspiration's ("(web color) · Hex #4169E1 · …"), here the Qur'an's own measure, counted from the
- * index: its surahs, its ayat, its parts.
+ * Blue's cover: a poster's row of captions across the top of the screen (as d3's "10th October
+ * 2023 · … · 365 days of design"), here the Qur'an's own measure, counted from the index: its
+ * surahs, its ayat, its parts.
  */
 export function CoverSpec({ show, surahs, juz }: { show: boolean; surahs: Surah[]; juz: Record<string, string> }) {
   const ayat = surahs.reduce((a, s) => a + s.count, 0);

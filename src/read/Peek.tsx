@@ -6,6 +6,7 @@ import { ALIASES, normLatin } from "@/lib/search";
 import { useStore } from "@/lib/store";
 import { useUI, type Peek } from "@/lib/ui";
 import { EASE_OUT } from "@/lib/utils";
+import { nameMarks } from "@/lib/names";
 
 /**
  * An ayah a note refers to, opened beside the note to read where the reader is: its Arabic and its
@@ -272,7 +273,7 @@ export function AyahPeek() {
               <div className="label text-[var(--box-faint)]">
                 {pad3(peek.s)} · {label}
               </div>
-              <div className="display mt-1 truncate font-serif text-[19px] italic leading-tight">{data?.surah.tc ?? " "}</div>
+              <div className="display mt-1 truncate font-serif text-[19px] italic leading-tight">{data ? nameMarks(data.surah.tc) : " "}</div>
             </div>
             <button type="button" onClick={() => setPeek(null)} aria-label="Close" className="-mr-1.5 flex h-8 w-8 shrink-0 items-center justify-center text-[var(--box-muted)] hover:text-[var(--box-fg)]">
               <X size={15} strokeWidth={1.6} />

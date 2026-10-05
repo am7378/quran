@@ -11,6 +11,10 @@ export function ContextMenu() {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const [active, setActive] = useState(-1);
+  // a press that began before the menu opened (the finger that held for it, still down) is not a
+  // choice: lifting it over an item does nothing. Only a press begun on the open menu chooses (or
+  // the keys: a click from a key has no press at all, detail 0)
+  const armed = useRef(false);
 
   useLayoutEffect(() => {
     if (!menu) return;
@@ -19,12 +23,14 @@ export function ContextMenu() {
     // always whole on the screen: moved in from the edges; a menu taller than the screen scrolls
     setPos({ x: Math.max(8, Math.min(menu.x, window.innerWidth - w - 8)), y: Math.max(8, Math.min(menu.y, window.innerHeight - h - 8)) });
     setActive(-1);
+    armed.current = false;
   }, [menu]);
 
   useEffect(() => {
     if (!menu) return;
     const down = (e: PointerEvent) => {
       if (ref.current && !ref.current.contains(e.target as Node)) close();
+      else armed.current = true;
     };
     const items = menu.items.map((it, i) => ({ it, i })).filter(({ it }) => it.type === "item" && !it.disabled);
     const key = (e: KeyboardEvent) => {
@@ -83,7 +89,8 @@ export function ContextMenu() {
                 disabled={it.disabled}
                 onMouseEnter={() => setActive(i)}
                 onMouseDown={(e) => e.preventDefault()}
-                onClick={() => {
+                onClick={(e) => {
+                  if (!armed.current && e.detail !== 0) return;
                   close();
                   it.onSelect();
                 }}

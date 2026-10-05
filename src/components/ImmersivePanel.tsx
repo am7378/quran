@@ -53,13 +53,13 @@ export function ImmersivePanel({
         exit: { opacity: 0, y: 12, filter: "blur(6px)", transition: { duration: 0.4, ease: EASE_OUT } },
         transition: { duration: 0.85, ease: EASE_OUT },
       }
-    : theme === "royal"
+    : theme === "blue"
     ? {
-        // night rising: the panel drawn up from the foot, as the range's shadow climbs the sky
-        initial: { clipPath: "inset(100% 0 0 0)" },
-        animate: { clipPath: "inset(0% 0 0 0)" },
-        exit: { clipPath: "inset(0 0 100% 0)", transition: { duration: 0.42, ease: EASE_IN_OUT } },
-        transition: { duration: 0.62, ease: EASE_IN_OUT },
+        // a slab of the blue run in from the side, as a second colour is printed over a poster
+        initial: { clipPath: "inset(0 100% 0 0)" },
+        animate: { clipPath: "inset(0 0% 0 0)" },
+        exit: { clipPath: "inset(0 0 0 100%)", transition: { duration: 0.36, ease: EASE_IN_OUT } },
+        transition: { duration: 0.5, ease: EASE_IN_OUT },
       }
     : theme === "atlas"
     ? {

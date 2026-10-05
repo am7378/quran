@@ -6,13 +6,33 @@
 let ctx: AudioContext | null = null;
 let noise: AudioBuffer | null = null;
 
-function context() {
-  if (!ctx) {
-    const AC = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!AC) return null;
-    ctx = new AC();
+/* An iPhone (Safari, and above all the site added to the Home Screen) is strict about sound:
+   - the audio engine starts only inside a finger's lift or a click (not as the finger lands);
+   - leaving the app, locking the phone or a call "interrupts" it, a state of its own that never
+     ends by itself, and an engine brought back from it can say it is running and play nothing.
+   So the engine is made new inside the next press after any of that (wakeSound, from a lift or a
+   click), a silent sample is played in that press to open the phone's sound, and it is closed
+   whenever the page is hidden. The sounds themselves only ever ask a running engine. */
+const AC = () => window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+let stale = false; // the page was hidden since the engine was made: a new one at the next press
+
+function fresh() {
+  const A = AC();
+  if (!A) return null;
+  try {
+    ctx?.close().catch(() => {});
+  } catch {
+    /* already closed */
   }
-  if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  stroke = null;
+  stale = false;
+  ctx = new A();
+  return ctx;
+}
+
+function context() {
+  if (!ctx || (ctx.state as string) === "closed") return null;
+  if (ctx.state !== "running") ctx.resume().catch(() => {});
   // (running, an audio engine keeps a phone's sound hardware awake, sound or no sound: it rests
   // once the site has been quiet a while, and the next sound wakes it)
   window.clearTimeout(rest);
@@ -20,6 +40,17 @@ function context() {
   return ctx;
 }
 let rest = 0;
+
+if (typeof document !== "undefined")
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "hidden") return;
+    // gone from the screen: the engine is let go (an iPhone would interrupt it anyway)
+    window.clearTimeout(rest);
+    ctx?.close().catch(() => {});
+    ctx = null;
+    stroke = null;
+    stale = true;
+  });
 
 function noiseBuffer(c: AudioContext) {
   if (noise && noise.sampleRate === c.sampleRate) return noise;
@@ -318,7 +349,25 @@ export function sfx(kind: Sfx, at = 0.5) {
   }
 }
 
-/** Sounds wake on the first touch or click (browsers keep audio asleep until then). */
+/**
+ * Sounds wake with the reader's presses (browsers keep audio asleep until then): called as a finger
+ * or button goes down, and again as it lifts and on the click and keys, which are the moments an
+ * iPhone allows. Cheap when the engine is already running.
+ */
 export function wakeSound() {
-  context();
+  if (!AC()) return;
+  const state = ctx?.state as string | undefined;
+  if (!ctx || stale || state === "closed" || state === "interrupted") fresh();
+  const c = ctx;
+  if (!c || c.state === "running") return;
+  c.resume().catch(() => {});
+  // a silent sample played inside the press itself: what opens an iPhone's sound for the rest
+  try {
+    const s = c.createBufferSource();
+    s.buffer = c.createBuffer(1, 1, c.sampleRate);
+    s.connect(c.destination);
+    s.start(0);
+  } catch {
+    /* not yet */
+  }
 }

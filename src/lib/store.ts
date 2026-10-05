@@ -235,7 +235,10 @@ export const useStore = create<State>()(
       merge: (persisted, current) => {
         const p = { ...((persisted ?? {}) as Partial<State> & { stats?: unknown }) };
         delete p.stats; // the reading counts the site once kept are gone
-        return { ...current, ...p, settings: { ...DEFAULTS, ...(p.settings ?? {}) } };
+        const settings = { ...DEFAULTS, ...(p.settings ?? {}) };
+        // (the royal blue theme, once "Royal", is "Blue")
+        if ((settings.theme as string) === "royal") settings.theme = "blue";
+        return { ...current, ...p, settings };
       },
     },
   ),

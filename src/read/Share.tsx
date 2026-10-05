@@ -6,6 +6,7 @@ import { themeOf } from "@/lib/surahThemes";
 import { AnimatePresence, motion } from "framer-motion";
 import { Copy, Download, ImageIcon, Link2, X as Close } from "lucide-react";
 import { EASE_OUT, cn, copyText } from "@/lib/utils";
+import { ayn, drawingHats, nameMarks } from "@/lib/names";
 import type { ThemeId } from "@/lib/themes";
 
 export type ShareFormat = "square" | "landscape" | "story";
@@ -656,103 +657,97 @@ const lunar: Look = (() => {
   };
 })();
 
-/* Royal: a dusk in royal blue printed on black, the range of mountains black across it, every
-   letter blue (the Arabic palest); the reference a specimen's row of captions, in italics */
-const royal: Look = (() => {
-  const geo = (k: Ctx) => {
-    const i = Math.round(k.S * 0.035);
-    return { x0: i, y0: i, x1: k.W - i, horizon: k.H * (k.format === "story" ? 0.6 : 0.66) };
+/* Blue: a poster in one colour. The royal blue printed as a halftone screen, its dots swelling and
+   thinning in broad waves; a white sheet laid on it with a hard navy shadow and crop marks at its
+   corners; the ayah in ink on the sheet, a blue bar between; the surah's name stamped white on a
+   block of the blue, its number in a technical mono beside it. */
+const blue: Look = (() => {
+  const sheet = (k: Ctx) => {
+    const mx = Math.round(k.S * (k.format === "landscape" ? 0.07 : 0.085));
+    const my = Math.round(k.S * (k.format === "story" ? 0.14 : 0.085));
+    return { x0: mx, y0: my, x1: k.W - mx, y1: k.H - my - Math.round(k.S * 0.012) };
   };
   return {
-    fonts: ['400 40px "Noto Serif Variable"', 'italic 400 24px "Noto Serif Variable"', '400 24px "Marks Serif"'],
-    ar: "#b2c1fd",
-    tr: "#7d9bf7",
-    trFont: (px: number) => `400 ${Math.round(px * 0.95)}px "Noto Serif Variable", "Marks Serif", serif`,
+    fonts: ['italic 800 40px "Archivo Variable"', '400 24px "Archivo Variable"', '500 20px "Martian Mono Variable"'],
+    ar: "#0e1014",
+    tr: "#0e1014",
+    trFont: (px: number) => `400 ${Math.round(px * 0.94)}px "Archivo Variable", "Marks Sans", sans-serif`,
     paint(g: CanvasRenderingContext2D, k: Ctx) {
       const { W, H, S } = k;
-      const { x0, y0, x1, horizon } = geo(k);
-      g.fillStyle = "#000";
+      g.fillStyle = "#4169e1";
       g.fillRect(0, 0, W, H);
-      g.save();
-      g.beginPath();
-      g.rect(x0, y0, x1 - x0, H - y0);
-      g.clip();
-      // the dusk: near black overhead, royal blue low on the sky
-      const sky = g.createLinearGradient(0, y0, 0, horizon);
-      sky.addColorStop(0, "#010309");
-      sky.addColorStop(0.6, "#061243");
-      sky.addColorStop(1, "#0d2272");
-      g.fillStyle = sky;
-      g.fillRect(x0, y0, x1 - x0, horizon - y0 + 2);
-      glowAt(g, k, W * 0.6, horizon, S * 0.55, "rgba(45,85,225,0.22)");
-      // long dark bands of cloud
-      const rnd = seeded(k.seed + 21);
-      for (let i = 0; i < 9; i++) {
-        const cy = y0 + (horizon - y0) * (0.18 + rnd() * 0.7);
-        const hh = S * (0.012 + rnd() * 0.03);
-        // a long ellipse, soft at its ends as well as above and below
-        const cx = x0 + rnd() * (x1 - x0), cw = W * (0.35 + rnd() * 0.5);
-        const soft = g.createRadialGradient(0, 0, 0, 0, 0, 1);
-        soft.addColorStop(0, `rgba(1,3,14,${0.3 + rnd() * 0.3})`);
-        soft.addColorStop(0.55, "rgba(1,3,14,0.18)");
-        soft.addColorStop(1, "rgba(1,3,14,0)");
-        g.save();
-        g.translate(cx, cy);
-        g.scale(cw / 2, hh);
-        g.fillStyle = soft;
-        g.beginPath();
-        g.arc(0, 0, 1, 0, Math.PI * 2);
-        g.fill();
-        g.restore();
-      }
-      // the range: one peak right of the middle, lower ridges either side, black
-      g.fillStyle = "#010208";
-      g.beginPath();
-      g.moveTo(x0, H);
-      // as the sky behind the reader (skies.tsx): a sharp summit whose flanks fall steeply then
-      // ease, lower ridges either side, the edge rough with rock, rougher toward the top
-      const jag = seeded(k.seed + 5);
-      const knots = Array.from({ length: 12 }, () => jag() - 0.5);
-      const fine = Array.from({ length: 70 }, () => jag() - 0.5);
-      const noise = (a: number[], t: number) => {
-        const f = t * (a.length - 1), i = Math.min(a.length - 2, Math.floor(f)), u = f - i;
-        return a[i] + (a[i + 1] - a[i]) * u * u * (3 - 2 * u);
+      // the screen: dots of a deeper blue on a lattice turned fifteen degrees, their size following
+      // broad waves across the picture
+      const cell = S * 0.021;
+      const ang = 0.2618, cs = Math.cos(ang), sn = Math.sin(ang);
+      const ph = (k.seed % 97) * 0.13;
+      const tone = (x: number, y: number) => {
+        const u = x / S, v = y / S;
+        const w = 0.5 + 0.5 * Math.sin((u * 0.85 - v * 1.55) * 6.0 + Math.sin(u * 2.3 + ph) * 1.6 + ph);
+        return Math.max(0, Math.min(1, (w - 0.18) / 0.8));
       };
-      const steps = Math.ceil((x1 - x0) / (S * 0.003));
-      for (let j = 0; j <= steps; j++) {
-        const t = j / steps, x = x0 + (x1 - x0) * t;
-        const d = Math.abs(x - W * 0.6) / W;
-        const peak = 0.17 * Math.exp(-d * 9) + 0.05 * Math.exp(-d * 2.6);
-        const side = 0.05 * Math.exp(-Math.abs(x - W * 0.14) / W * 5) + 0.03 * Math.exp(-Math.abs(x - W * 0.9) / W * 6);
-        const rock = noise(knots, t) * (0.03 + peak * 0.22) + noise(fine, t) * 0.007 + (jag() - 0.5) * 0.0025;
-        g.lineTo(x, horizon - S * (0.02 + peak + side + rock));
+      g.fillStyle = "#13277d";
+      const reach = Math.hypot(W, H);
+      for (let i = -reach / cell; i < reach / cell; i++) {
+        for (let j = -reach / cell; j < reach / cell; j++) {
+          const qx = (i + 0.5) * cell, qy = (j + 0.5) * cell;
+          const x = cs * qx + sn * qy, y = -sn * qx + cs * qy;
+          if (x < -cell || y < -cell || x > W + cell || y > H + cell) continue;
+          const rad = 0.56 * Math.sqrt(tone(x, y)) * cell;
+          if (rad < cell * 0.05) continue;
+          g.beginPath();
+          g.arc(x, y, rad, 0, Math.PI * 2);
+          g.fill();
+        }
       }
-      g.lineTo(x1, H);
-      g.closePath();
-      g.fill();
-      g.restore();
-      grainOn(g, k, 0.6);
-      return { top: y0 + S * 0.07, bottom: H - k.fs * 5.4, padX: W * (k.format === "landscape" ? 0.12 : 0.13) };
+      // the sheet, its hard shadow, the crop marks round it
+      const { x0, y0, x1, y1 } = sheet(k);
+      const off = Math.round(S * 0.016);
+      g.fillStyle = "#0f1f5c";
+      g.fillRect(x0 + off, y0 + off, x1 - x0, y1 - y0);
+      g.fillStyle = "#f3f2ee";
+      g.fillRect(x0, y0, x1 - x0, y1 - y0);
+      g.strokeStyle = "#0e1014";
+      g.lineWidth = Math.max(2, S * 0.0022);
+      g.strokeRect(x0, y0, x1 - x0, y1 - y0);
+      g.strokeStyle = "rgba(255,255,255,0.92)";
+      g.lineWidth = Math.max(2, S * 0.002);
+      const gap = S * 0.022, len = S * 0.016;
+      for (const [cx, cy, sx, sy] of [[x0, y0, -1, -1], [x1, y0, 1, -1], [x0, y1, -1, 1], [x1, y1, 1, 1]]) {
+        line(g, cx + sx * gap, cy + sy * gap, cx + sx * (gap - len), cy + sy * gap);
+        line(g, cx + sx * gap, cy + sy * gap, cx + sx * gap, cy + sy * (gap - len));
+      }
+      grainOn(g, k, 0.35);
+      return { top: y0 + S * 0.06, bottom: y1 - k.fs * 4.6, padX: x0 + W * (k.format === "landscape" ? 0.07 : 0.06) };
     },
     rule(g: CanvasRenderingContext2D, x: number, y: number) {
-      g.strokeStyle = "rgba(65,105,225,0.9)";
-      g.lineWidth = 2;
-      line(g, x - 28, y, x + 28, y);
+      g.fillStyle = "#4169e1";
+      g.fillRect(x - 26, y - 3, 52, 6);
     },
     reference(g: CanvasRenderingContext2D, k: Ctx, name: string, ref: string) {
-      const y = k.H - k.m - k.fs * 1.7;
-      const pad = k.S * 0.065;
-      g.strokeStyle = "rgba(65,105,225,0.4)";
-      g.lineWidth = 1.5;
-      line(g, pad, y - k.fs * 1.5, k.W - pad, y - k.fs * 1.5);
+      const { x0, x1, y1 } = sheet(k);
+      const pad = k.S * 0.035;
+      const y = y1 - pad - k.fs * 1.1;
+      // the name: white on a block of the blue, heavy and leaning
+      g.font = `italic 800 ${Math.round(k.fs * 1.5)}px "Archivo Variable", "Marks Sans", sans-serif`;
+      spacing(g, -k.fs * 0.02);
       g.textBaseline = "middle";
-      g.fillStyle = "#4169e1";
-      g.font = `italic 400 ${Math.round(k.fs * 1.3)}px "Noto Serif Variable", "Marks Serif", serif`;
-      spacing(g, 0);
       g.textAlign = "left";
-      g.fillText(`(${name})`, pad, y);
+      const w = g.measureText(name).width;
+      const bx = x0 + pad, bh = k.fs * 2.3;
+      g.fillStyle = "#0e1014";
+      g.fillRect(bx + 4, y - bh / 2 + 4, w + k.fs * 1.1, bh);
+      g.fillStyle = "#4169e1";
+      g.fillRect(bx, y - bh / 2, w + k.fs * 1.1, bh);
+      g.fillStyle = "#ffffff";
+      g.fillText(name, bx + k.fs * 0.5, y + k.fs * 0.05);
+      // the reference in mono capitals
+      g.font = `500 ${Math.round(k.fs * 1.05)}px "Martian Mono Variable", "Marks Sans", monospace`;
+      spacing(g, k.fs * 0.08);
+      g.fillStyle = "#0e1014";
       g.textAlign = "right";
-      g.fillText(ref, k.W - pad, y);
+      g.fillText(ref, x1 - pad, y);
+      spacing(g, 0);
     },
   };
 })();
@@ -769,8 +764,8 @@ function lookOf(theme: ThemeId | undefined, box: "night" | "paper" | undefined, 
       return paper;
     case "lunar":
       return lunar;
-    case "royal":
-      return royal;
+    case "blue":
+      return blue;
     default:
       return classic;
   }
@@ -853,7 +848,7 @@ export async function renderAyahImage(o: ShareContent, format: ShareFormat): Pro
   // the reference only
   g.direction = "ltr";
   g.textBaseline = "middle";
-  look.reference(g, k, o.surahName, o.ref);
+  drawingHats(g, () => look.reference(g, k, ayn(o.surahName), o.ref));
 
   return new Promise((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("render failed"))), "image/jpeg", 0.95));
 }
@@ -886,12 +881,15 @@ export function ShareDialog({ content: given, onClose, onToast }: { content: Sha
   const [withIt, setWithIt] = useState<WithIt>("part");
   const [range, setRange] = useState<[number, number]>([0, 0]);
   const [anchor, setAnchor] = useState<number | null>(null);
+  // a part shared goes with a part: its words, marked (a first guess, the reader's to change)
   useEffect(() => {
     if (!part) return;
-    setWithIt(part.guess ? "part" : "whole");
+    setWithIt("part");
     setRange(part.guess ?? [0, part.other.length - 1]);
     setAnchor(null);
   }, [part]);
+  // (while the first word is tapped and the last is not yet, the picture waits: drawn once, at the end)
+  const marked: [number, number] = anchor != null ? [anchor, anchor] : range;
   const content = useMemo<ShareContent | null>(() => {
     if (!given || !part) return given;
     const other = withIt === "none" ? "" : withIt === "whole" ? (part.side === "ar" ? given.translation : given.arabic) : tidy(part.other.slice(range[0], range[1] + 1).join(" "));
@@ -899,10 +897,8 @@ export function ShareDialog({ content: given, onClose, onToast }: { content: Sha
   }, [given, part, withIt, range]);
   // (a word tapped starts the choice, the next one ends it)
   const tapWord = (i: number) => {
-    if (anchor == null) {
-      setAnchor(i);
-      setRange([i, i]);
-    } else {
+    if (anchor == null) setAnchor(i);
+    else {
       setRange([Math.min(anchor, i), Math.max(anchor, i)]);
       setAnchor(null);
     }
@@ -966,11 +962,11 @@ export function ShareDialog({ content: given, onClose, onToast }: { content: Sha
       const file = new File([b], `${name}-${f}.jpg`, { type: "image/jpeg" });
       if (navigator.canShare?.({ files: [file] })) {
         // on phones this opens the share sheet, where Instagram (story or post) and X appear
-        await navigator.share({ files: [file], title: `${content.surahName} ${content.ref}` });
+        await navigator.share({ files: [file], title: `${ayn(content.surahName)} ${content.ref}` });
       } else {
         download(b, f);
         if (d === "x") {
-          const text = `${content.translation || content.arabic}\n— ${content.surahName} ${content.ref}`;
+          const text = `${content.translation || content.arabic}\n— ${ayn(content.surahName)} ${content.ref}`;
           window.open(`https://x.com/intent/post?text=${encodeURIComponent(text.slice(0, 240))}&url=${encodeURIComponent(content.url)}`, "_blank", "noopener");
           onToast("Image saved. Attach it to the post that just opened.");
         } else onToast(d === "story" ? "Image saved. Add it to your Instagram story from your gallery." : "Image saved. Post it on Instagram from your gallery.");
@@ -1007,7 +1003,7 @@ export function ShareDialog({ content: given, onClose, onToast }: { content: Sha
               <motion.img
                 key={url}
                 src={url}
-                alt={`${content.surahName} ${content.ref} as an image`}
+                alt={`${ayn(content.surahName)} ${content.ref} as an image`}
                 className={cn("max-w-full object-contain shadow-[0_20px_60px_-20px_rgba(0,0,0,0.9)] md:max-h-[70vh]", part ? "max-h-[34vh]" : "max-h-[52vh]")}
                 initial={{ opacity: 0, scale: 0.97 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -1023,7 +1019,7 @@ export function ShareDialog({ content: given, onClose, onToast }: { content: Sha
               <div>
                 <div className="label text-white/45">{part ? "Share a part" : "Share"}</div>
                 <div className="mt-1 font-serif text-[22px] italic">
-                  {content.surahName} <span className="font-mono text-[14px] not-italic text-white/60">{content.ref}</span>
+                  {nameMarks(content.surahName)} <span className="font-mono text-[14px] not-italic text-white/60">{content.ref}</span>
                 </div>
               </div>
               <button type="button" onClick={onClose} aria-label="Close" className="flex h-8 w-8 items-center justify-center text-white/60 hover:bg-white/10 hover:text-white">
@@ -1056,7 +1052,7 @@ export function ShareDialog({ content: given, onClose, onToast }: { content: Sha
                         className={cn("thin-scroll mt-2 max-h-[150px] overflow-y-auto border border-white/10 px-2.5 py-2", part.side === "ar" ? "font-serif text-[14.5px] leading-[1.75]" : "quran text-right text-[20px] leading-[2]")}
                       >
                         {part.other.map((w, i) => {
-                          const inIt = i >= range[0] && i <= range[1];
+                          const inIt = i >= marked[0] && i <= marked[1];
                           return (
                             <span key={i}>
                               <button
@@ -1067,7 +1063,7 @@ export function ShareDialog({ content: given, onClose, onToast }: { content: Sha
                                 {w}
                               </button>
                               {/* (the space between two chosen words is chosen too: one strip) */}
-                              <span className={i >= range[0] && i < range[1] ? "bg-[#efe9dd] shadow-[0_0_0_1px_#efe9dd]" : undefined}> </span>
+                              <span className={i >= marked[0] && i < marked[1] ? "bg-[#efe9dd] shadow-[0_0_0_1px_#efe9dd]" : undefined}> </span>
                             </span>
                           );
                         })}
@@ -1133,7 +1129,7 @@ export function ShareDialog({ content: given, onClose, onToast }: { content: Sha
                 icon={<Copy size={14} />}
                 label="Copy text"
                 onClick={async () => {
-                  (await copyText([content.arabic, content.translation, `— ${content.surahName} ${content.ref}`].filter(Boolean).join("\n\n"))) && onToast(`Copied ${content.ref}`);
+                  (await copyText([content.arabic, content.translation, `— ${ayn(content.surahName)} ${content.ref}`].filter(Boolean).join("\n\n"))) && onToast(`Copied ${content.ref}`);
                 }}
               />
               <Row icon={<Link2 size={14} />} label="Copy link" onClick={async () => (await copyText(content.url)) && onToast("Link copied")} />

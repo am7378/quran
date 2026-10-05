@@ -12,6 +12,7 @@ import type { Surah, Translation, Verse } from "@/lib/data";
 import { TRANSLATIONS, loadSurah, translationText } from "@/lib/data";
 import { EASE_OUT, cn } from "@/lib/utils";
 import { Segmented } from "@/components/ui/segmented";
+import { ayn, nameMarks } from "@/lib/names";
 
 type Tab = "reading" | "translation" | "display" | "sound" | "saved" | "progress" | "guide";
 const TABS: { id: Tab; name: string }[] = [
@@ -476,7 +477,7 @@ function SavedTab({ surahs, onGo }: { surahs: Surah[]; onGo: (s: number, a: numb
             <div key={s}>
               <div className="mb-1 flex items-baseline gap-2.5">
                 <span className="font-mono text-[10px] text-[var(--box-faint)] tabular-nums">{String(s).padStart(3, "0")}</span>
-                <span className="font-serif text-[17px] italic">{surahs[s - 1]?.tc}</span>
+                <span className="font-serif text-[17px] italic">{nameMarks(surahs[s - 1]?.tc)}</span>
                 <span className="font-kufi text-[13px] text-[var(--box-faint)]" dir="rtl">
                   {surahs[s - 1]?.ar}
                 </span>

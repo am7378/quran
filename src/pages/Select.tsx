@@ -15,6 +15,7 @@ import { isLongPressMenu } from "@/lib/touch";
 import { EASE_OUT, clamp, cn } from "@/lib/utils";
 import { useUI, type MenuItem } from "@/lib/ui";
 import { SettingsGlyph } from "@/components/ImmersivePanel";
+import { ayn, nameMarks } from "@/lib/names";
 
 const COUNT = 114;
 const SEARCH_H = 40; // the search input's height
@@ -176,7 +177,7 @@ export function Select({
       items.push({ type: "label", label: (under ?? cur).tc });
       if (under && under.n !== cur.n) {
         items.push({ type: "item", label: `Bring it forward`, onSelect: () => turnTo(under.n) });
-        items.push({ type: "item", label: `Open ${under.tc}`, onSelect: () => turnTo(under.n, () => setTimeout(() => openFront(1), 160)) });
+        items.push({ type: "item", label: `Open ${ayn(under.tc)}`, onSelect: () => turnTo(under.n, () => setTimeout(() => openFront(1), 160)) });
       } else items.push({ type: "item", label: `Open at ayah ${ayah}`, hint: "Enter", onSelect: () => openFront() });
       items.push({ type: "sep" });
       items.push({ type: "item", label: "Next surah", hint: "↓", onSelect: () => turnTo((cur.n % 114) + 1) });
@@ -190,7 +191,7 @@ export function Select({
       }
       items.push({ type: "item", label: "All surahs", onSelect: () => setView("ring") });
     }
-    if (resume && surahs[resume.s - 1]) items.push({ type: "item", label: `Continue · ${surahs[resume.s - 1].tc} ${resume.s}:${resume.v}`, onSelect: () => onOpen({ surah: resume.s, ayah: resume.v }) });
+    if (resume && surahs[resume.s - 1]) items.push({ type: "item", label: `Continue · ${ayn(surahs[resume.s - 1].tc)} ${resume.s}:${resume.v}`, onSelect: () => onOpen({ surah: resume.s, ayah: resume.v }) });
     items.push({ type: "sep" });
     items.push({ type: "item", label: "Settings", onSelect: onSettings });
     items.push({ type: "item", label: "About this reader", onSelect: () => useUI.getState().setAbout(true) });
@@ -222,12 +223,14 @@ export function Select({
             <div className="label mt-1 text-[var(--box-faint)]">{ring ? `[${pad3(front + 1)} / 114]` : INDEX_VIEWS.find((v) => v.id === view)?.line}</div>
           )}
         </div>
-        <div className="flex h-[22px] items-center gap-3">
+        {/* About and Settings set as on the cover (side by side, no gap but their own padding), the
+            gear's edge on the same line as the search and the Open button under it */}
+        <div className="flex h-[22px] items-center">
           <BracketButton onClick={() => useUI.getState().setAbout(true)} title="About this reader">
             About
           </BracketButton>
           {mobile ? (
-            <button type="button" onClick={onSettings} aria-label="Settings" title="Settings" className="-mr-2 flex h-9 w-9 items-center justify-center text-[var(--box-muted)] transition-colors hover:text-[var(--box-fg)]">
+            <button type="button" onClick={onSettings} aria-label="Settings" title="Settings" className="-mr-3 flex h-9 w-9 items-center justify-center text-[var(--box-muted)] transition-colors hover:bg-[var(--box-hover)] hover:text-[var(--box-fg)]">
               <SettingsGlyph open={settingsOpen} />
             </button>
           ) : (
@@ -235,7 +238,7 @@ export function Select({
               Settings
             </BracketButton>
           )}
-          {!mobile && <Clock className="text-[var(--box-muted)]" />}
+          {!mobile && <Clock className="ml-3 text-[var(--box-muted)]" />}
         </div>
       </div>
 
@@ -253,10 +256,10 @@ export function Select({
             type="button"
             onClick={() => onOpen({ surah: resume.s, ayah: resume.v })}
             className="btn-secondary pill group pointer-events-auto flex h-9 min-w-0 items-center gap-2.5 border border-[var(--box-line)] bg-[var(--box-hover)] px-3.5 transition-colors hover:border-[var(--box-fg)]"
-            aria-label={`Continue reading ${surahs[resume.s - 1].tc}, ayah ${resume.v}`}
+            aria-label={`Continue reading ${ayn(surahs[resume.s - 1].tc)}, ayah ${resume.v}`}
           >
             <span className="label shrink-0 text-[var(--box-muted)]">Continue</span>
-            {!mobile && <span className="-my-[0.15em] truncate py-[0.15em] font-serif text-[15px] italic leading-[1.15]">{surahs[resume.s - 1].tc}</span>}
+            {!mobile && <span className="-my-[0.15em] truncate py-[0.15em] font-serif text-[15px] italic leading-[1.15]">{nameMarks(surahs[resume.s - 1].tc)}</span>}
             <span className="label shrink-0 tabular-nums text-[var(--box-fg)]">
               {resume.s}:{resume.v}
             </span>
@@ -345,7 +348,7 @@ export function Select({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.35, duration: 0.7, ease: EASE_OUT }}
           >
-            <span className="display -my-[0.18em] self-end truncate py-[0.18em] font-serif text-[22px] leading-[1.1] italic md:text-[26px]">{surah.tc}</span>
+            <span className="display -my-[0.18em] self-end truncate py-[0.18em] font-serif text-[22px] leading-[1.1] italic md:text-[26px]">{nameMarks(surah.tc)}</span>
             <span className="flex shrink-0 items-baseline gap-3 self-end">
               {mobile && <span className="label text-[var(--box-faint)]">{surah.place === "makkah" ? "Makkan" : "Madinan"}</span>}
               <span className="font-kufi text-[18px] leading-none text-[var(--box-muted)]" dir="rtl">
@@ -366,7 +369,7 @@ export function Select({
               type="button"
               onClick={() => openFront()}
               className="btn-primary group relative inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap border-2 border-[var(--box-fg)] px-3.5 transition-colors hover:bg-[var(--box-fg)] hover:text-[var(--box-bg-solid)]"
-              aria-label={`Open ${surah.tc}, ayah ${ayah}`}
+              aria-label={`Open ${ayn(surah.tc)}, ayah ${ayah}`}
             >
               <span className="label">
                 Open {surah.n}:{ayah}

@@ -8,6 +8,7 @@ import type { Surah } from "@/lib/data";
 import { pad3 } from "@/lib/data";
 import { SurahArt } from "@/components/SurahCard";
 import { cn, uid } from "@/lib/utils";
+import { ayn, nameMarks } from "@/lib/names";
 
 const recKey = (s: number, id: string) => `rec:${s}:${id}`;
 
@@ -39,7 +40,7 @@ export function ReflectionPanel({ open, onClose, surah, mobile }: { open: boolea
   const saved = reflection?.updatedAt ? new Date(reflection.updatedAt) : null;
 
   return (
-    <ImmersivePanel open={open} from="right" onClose={onClose} label={`Reflection on ${surah.tc}`}>
+    <ImmersivePanel open={open} from="right" onClose={onClose} label={`Reflection on ${ayn(surah.tc)}`}>
       <div className="flex h-full flex-col">
         <div className="flex items-start justify-between px-5 pt-4 md:px-8 md:pt-6">
           <Reveal>
@@ -61,7 +62,7 @@ export function ReflectionPanel({ open, onClose, surah, mobile }: { open: boolea
                 <div className="font-kufi text-[28px] leading-none md:text-[34px]" dir="rtl">
                   {surah.ar}
                 </div>
-                <div className="display mt-2 font-serif text-[30px] leading-none italic md:text-[40px]">{surah.tc}</div>
+                <div className="display mt-2 font-serif text-[30px] leading-none italic md:text-[40px]">{nameMarks(surah.tc)}</div>
                 <div className="label mt-2 text-[var(--box-muted)]">{surah.en} · {surah.count} ayat</div>
               </div>
             </Reveal>

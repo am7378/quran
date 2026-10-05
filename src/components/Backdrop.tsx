@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { NightHero } from "./ui/hero";
 import { MonoSky } from "./ui/mono-sky";
-import { AtlasSky, FolioSky, LunarSky, PaperSky, RoyalSky } from "./ui/skies";
+import { AtlasSky, BlueSky, FolioSky, LunarSky, PaperSky } from "./ui/skies";
 import type { ThemeId } from "@/lib/themes";
 import { isTouch, useIdle } from "@/lib/motion";
 
@@ -24,8 +24,8 @@ export function Backdrop({ theme, still: held, grain }: { theme: ThemeId; still?
             <FolioSky className="absolute inset-0" still={still} />
           ) : theme === "lunar" ? (
             <LunarSky className="absolute inset-0" still={still} />
-          ) : theme === "royal" ? (
-            <RoyalSky className="absolute inset-0" still={still} />
+          ) : theme === "blue" ? (
+            <BlueSky className="absolute inset-0" still={still} />
           ) : theme === "paper" ? (
             <PaperSky className="absolute inset-0" still={still} />
           ) : (

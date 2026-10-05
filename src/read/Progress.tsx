@@ -10,6 +10,7 @@ import { EASE_OUT, cn } from "@/lib/utils";
 import { Segmented } from "@/components/ui/segmented";
 import { voiceKey } from "./VoiceNote";
 import { QuillGlyph } from "@/components/glyphs";
+import { ayn, nameMarks } from "@/lib/names";
 
 /**
  * Progress, as the reader marks it: a surah is completed when they tick it, at its end or here.
@@ -75,7 +76,7 @@ export function CompleteMark({ surah }: { surah: Surah }) {
       aria-pressed={!!done}
       data-sfx="none"
       className="group flex items-center gap-3 text-left"
-      title={done ? "Completed. Tap to undo." : `Mark ${surah.tc} as completed`}
+      title={done ? "Completed. Tap to undo." : `Mark ${ayn(surah.tc)} as completed`}
     >
       <span
         className={cn(
@@ -213,8 +214,8 @@ export function ProgressTab({ surahs, onGo }: { surahs: Surah[]; onGo: (s: numbe
               role="option"
               aria-selected={pick === s.n}
               onClick={() => setPick((p) => (p === s.n ? null : s.n))}
-              title={`${pad3(s.n)} ${s.tc}${done[s.n] ? ` · completed ${fmtDate(done[s.n])}` : ""}`}
-              aria-label={`${s.tc}${done[s.n] ? ", completed" : ""}`}
+              title={`${pad3(s.n)} ${ayn(s.tc)}${done[s.n] ? ` · completed ${fmtDate(done[s.n])}` : ""}`}
+              aria-label={`${ayn(s.tc)}${done[s.n] ? ", completed" : ""}`}
               className={cn(
                 "relative aspect-square border transition-colors",
                 done[s.n] ? "border-[var(--box-fg)] bg-[var(--box-fg)]" : "border-[var(--box-line)] hover:border-[var(--box-muted)]",
@@ -262,7 +263,7 @@ export function ProgressTab({ surahs, onGo }: { surahs: Surah[]; onGo: (s: numbe
             <div key={s} className="flex items-baseline gap-3 border-t border-[var(--box-line)] py-2">
               <span className="w-[3ch] font-mono text-[11px] text-[var(--box-faint)] tabular-nums">{pad3(Number(s))}</span>
               <button type="button" onClick={() => onGo(Number(s), 1)} className="min-w-0 flex-1 truncate text-left font-serif text-[16px] italic hover:text-[var(--color-gold)]">
-                {surahs[Number(s) - 1]?.tc}
+                {nameMarks(surahs[Number(s) - 1]?.tc)}
               </button>
               <span className="label-sm text-[var(--box-faint)]">{fmtDate(at)}</span>
               <button type="button" data-sfx="undo" onClick={() => toggle(Number(s))} className="label-sm text-[var(--box-faint)] hover:text-[var(--box-fg)]">
@@ -302,7 +303,7 @@ function PickBar({ surah, hasKept, onGo, onJournal }: { surah: Surah; hasKept: b
     >
       <div className="flex min-w-[170px] flex-1 items-baseline gap-2.5">
         <span className="font-mono text-[11px] text-[var(--box-faint)] tabular-nums">{pad3(surah.n)}</span>
-        <span className="truncate font-serif text-[18px] italic">{surah.tc}</span>
+        <span className="truncate font-serif text-[18px] italic">{nameMarks(surah.tc)}</span>
         <span className="label-sm shrink-0 text-[var(--box-faint)]">{surah.count} ayat</span>
       </div>
       <div className="flex flex-wrap items-center gap-2">
@@ -342,7 +343,7 @@ function KeptRow({ surah, kept, done, onOpen }: { surah: Surah; kept: Kept; done
   return (
     <button type="button" onClick={onOpen} className="group flex items-center gap-3 border-t border-[var(--box-line)] py-2.5 text-left transition-colors hover:bg-[var(--box-hover)]">
       <span className="w-[3ch] shrink-0 font-mono text-[11px] text-[var(--box-faint)] tabular-nums">{pad3(surah.n)}</span>
-      <span className="min-w-0 flex-1 truncate font-serif text-[16px] italic">{surah.tc}</span>
+      <span className="min-w-0 flex-1 truncate font-serif text-[16px] italic">{nameMarks(surah.tc)}</span>
       <span className="flex shrink-0 items-center gap-3 text-[var(--box-faint)]">
         {kept.hl.length > 0 && (
           <span className="flex items-center gap-1.5" title={`${kept.hl.length} highlight${kept.hl.length === 1 ? "" : "s"}`}>
@@ -414,7 +415,7 @@ function SurahJournal({ surah, kept, onBack, onGo }: { surah: Surah; kept: Kept 
             Surah {surah.n} · {surah.place === "makkah" ? "Makkan" : "Madinan"} · {surah.count} ayat
           </div>
           <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-            <span className="display font-serif text-[30px] italic leading-none md:text-[38px]">{surah.tc}</span>
+            <span className="display font-serif text-[30px] italic leading-none md:text-[38px]">{nameMarks(surah.tc)}</span>
             <span className="font-kufi text-[26px] leading-none text-[var(--box-muted)] md:text-[30px]" dir="rtl" lang="ar">
               {surah.ar}
             </span>
