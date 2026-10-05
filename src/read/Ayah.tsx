@@ -79,7 +79,10 @@ export const AyahSection = memo(function AyahSection({
       if (!(e as Event & { skipped?: boolean }).skipped && oneRef.current) setShownTick((t) => t + 1);
     };
     el.addEventListener("contentvisibilityautostatechange", on);
-    return () => el.removeEventListener("contentvisibilityautostatechange", on);
+    return () => {
+      el.removeEventListener("contentvisibilityautostatechange", on);
+      notNear(el);
+    };
   }, []);
   const arRef = useRef<HTMLDivElement>(null);
   const trWrap = useRef<HTMLDivElement>(null);
@@ -141,9 +144,9 @@ export const AyahSection = memo(function AyahSection({
   /* ── context on and off. In the one-ayah view the old text fades out, the new
      one fades in, and the ayah glides to its new centre; only transforms and
      opacity move, so no frame waits on the page's layout. In the multiple-ayah
-     view the page fades through it (Read). The ayahs out of sight change a few
-     at a time after it, nearest first; one above the view keeps the page from
-     moving under the reader. ── */
+     view the page fades through it (Read). An ayah out of sight changes only as
+     the reader comes near it (whenNear), so nothing above the reader moves when
+     the switch is pressed, and no work is spent on ayahs never reached. ── */
   const [ctxShown, setCtxShown] = useState(settings.showContext);
   const pending = useRef<{ from: number; above: boolean; ghost?: HTMLElement; top?: number } | null>(null);
   const glide = useRef<Animation | null>(null);
@@ -166,7 +169,7 @@ export const AyahSection = memo(function AyahSection({
     };
     const { r, sr, seen } = where();
     if (!seen) {
-      later(Math.abs(r.top - sr.top) / Math.max(1, sr.height), () => {
+      whenNear(sec, () => {
         if (!ref.current || want.current === shown.current) return;
         const w = where();
         pending.current = { from: sec.offsetHeight, above: w.r.bottom <= w.sr.top + 1 };
@@ -199,8 +202,9 @@ export const AyahSection = memo(function AyahSection({
     if (!P) return;
     const p = trRef.current, box = trWrap.current, sec = ref.current;
     if (!P.ghost) {
-      // (one not laid out is left to the reader's own watch on the heights above the frame)
-      if (P.above && sec && !isSkipped(sec)) {
+      // (one not laid out is left to the reader's own watch on the heights above the frame; in the
+      // one-ayah view that watch keeps the place through every change, this one included)
+      if (P.above && sec && !isSkipped(sec) && !oneRef.current) {
         const sc = sec.closest<HTMLElement>(".snap-scroller");
         if (sc) sc.scrollTop += sec.offsetHeight - P.from;
       }
@@ -224,6 +228,15 @@ export const AyahSection = memo(function AyahSection({
     out.onfinish = done;
     out.oncancel = done;
     p.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 420, delay: 140, easing: "cubic-bezier(0, 0, 0.2, 1)", fill: "backwards" });
+  }, [ctxShown]);
+
+  // the context changed this ayah's height: those keeping the reader's place hear of it now,
+  // after its own steps above (an effect declared after them runs after them)
+  const told = useRef(ctxShown);
+  useLayoutEffect(() => {
+    if (told.current === ctxShown) return;
+    told.current = ctxShown;
+    heightsChanged();
   }, [ctxShown]);
 
   const actions = (
@@ -376,21 +389,52 @@ function isSkipped(sec: HTMLElement) {
   return !!c && typeof c.checkVisibility === "function" && !c.checkVisibility({ contentVisibilityAuto: true });
 }
 
-/* Work for the ayahs out of sight: a few each frame, nearest (`d`, in screens away) first, so no
-   frame waits on a whole surah being rewritten, and none of it lands during the crossfade. */
-const queue: { d: number; run: () => void }[] = [];
-let draining = false;
-function later(d: number, run: () => void) {
-  queue.push({ d, run });
-  if (draining) return;
-  draining = true;
-  const step = () => {
-    queue.sort((a, b) => a.d - b.d);
-    for (const job of queue.splice(0, 10)) job.run();
-    if (queue.length) setTimeout(step, 16);
-    else draining = false;
+/* Work for an ayah out of sight, done as the reader comes near it (within a screen and a bit of the
+   frame, either way): before it can be seen, and never for ayahs the reader does not reach. One
+   watch for the whole page. */
+const nearWatch = new WeakMap<Element, IntersectionObserver>();
+const nearJobs = new WeakMap<Element, () => void>();
+const nearIn = new WeakMap<Element, IntersectionObserver>();
+function whenNear(el: HTMLElement, run: () => void) {
+  const root = el.closest(".snap-scroller");
+  if (!root || typeof IntersectionObserver === "undefined") return run();
+  let io = nearWatch.get(root);
+  if (!io) {
+    const watch = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (!e.isIntersecting) continue;
+          const job = nearJobs.get(e.target);
+          nearJobs.delete(e.target);
+          watch.unobserve(e.target);
+          job?.();
+        }
+      },
+      { root, rootMargin: "120% 0px 120% 0px" },
+    );
+    nearWatch.set(root, (io = watch));
+  }
+  nearJobs.set(el, run);
+  nearIn.set(el, io);
+  io.observe(el);
+}
+function notNear(el: HTMLElement) {
+  nearJobs.delete(el);
+  nearIn.get(el)?.unobserve(el);
+  nearIn.delete(el);
+}
+
+/** An ayah's height changed with its context: those keeping the reader's place hear of it at once,
+ *  in the same frame (before it is drawn), not a frame late (Read). */
+const heightWatch = new Set<() => void>();
+export function onAyahHeights(f: () => void) {
+  heightWatch.add(f);
+  return () => {
+    heightWatch.delete(f);
   };
-  setTimeout(step, 480); // after the crossfade in view has played
+}
+function heightsChanged() {
+  heightWatch.forEach((f) => f());
 }
 
 /** A translation's pieces as rendered: bold reading text, the lighter context (when shown), highlights over both. */

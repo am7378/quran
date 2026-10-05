@@ -28,7 +28,7 @@ import {
   Volume2,
   X as XIcon,
 } from "lucide-react";
-import { Actions, AyahSection, ContextToggle, type AyahAction } from "./Ayah";
+import { Actions, AyahSection, ContextToggle, onAyahHeights, type AyahAction } from "./Ayah";
 import { HONORIFICS, glossByTerm, glossFor, loadGlossary } from "./terms";
 import { HighlightMenu, StickyNotes, Toast, WordTip, tipHover, type Tip } from "./Overlays";
 import { ReflectionPanel } from "./Reflection";
@@ -226,6 +226,8 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
 
   // the one-ayah view's anchor (below): told at once when the page itself moves the reader
   const anchorNow = useRef<() => void>(() => {});
+  // (and told to follow a glide the page makes, for as long as it lasts)
+  const anchorFollow = useRef<(ms: number) => void>(() => {});
 
   /* ── scroll to a pending target once the surah is rendered ──── */
   const scrollToAyah = useCallback((ayah: number, smooth = true) => {
@@ -270,6 +272,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       const t = topOf();
       if (Math.abs(t - sc.scrollTop) > 2) sc.scrollTo({ top: t, behavior: "smooth" });
     };
+    anchorFollow.current(2600);
     const glide = () => {
       sc.scrollTo({ top: topOf(), behavior: "smooth" });
       if ("onscrollend" in window) sc.addEventListener("scrollend", settle, { once: true });
@@ -416,6 +419,9 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
   }, [data, settings.view, settings.reduceMotion]);
 
   /* ── which ayah is in the frame ─────────────────────────────── */
+  // and where the reader is, to the pixel: the ayah at the frame's top and how far into it (kept
+  // through a change of the context, however it is switched: below)
+  const spot = useRef<{ n: number; off: number; frac: number } | null>(null);
   useEffect(() => {
     const sc = scroller.current;
     if (!sc) return;
@@ -436,6 +442,15 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
         else if (sc.classList.contains("flow") && items.length > 1) {
           const closing = items[items.length - 1];
           if (sc.scrollTop >= closing.offsetTop - sc.clientHeight - 4) cur = Number(closing.dataset.n) - 1;
+        }
+        let top: HTMLElement | null = null;
+        for (const el of items) {
+          if (el.offsetTop <= sc.scrollTop + 2) top = el;
+          else break;
+        }
+        if (top) {
+          const off = sc.scrollTop - top.offsetTop;
+          spot.current = { n: Number(top.dataset.n), off, frac: top.offsetHeight ? off / top.offsetHeight : 0 };
         }
         // the ayahs showing in the frame (their notes float over it)
         let last = cur;
@@ -511,12 +526,32 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       }
       anchor = cur ? { el: cur, off: sc.scrollTop - cur.offsetTop } : null;
     };
+    // the place is taken again only from the reader's own scrolling (a finger, the wheel, the keys,
+    // and the glide or snap that follows), or when the page moves them itself (anchorNow): never
+    // from the page keeping its place, whose steps can each be a little off (Safari) and would be
+    // taken up as the place, adding up until the reader is on another ayah
     let placing = false;
+    let theirs = 0;
+    let held = false; // (a finger or a button down: all the scrolling is theirs, an edge's autoscroll too)
+    const touched = () => (theirs = performance.now() + 1200);
+    const press = () => ((held = true), touched());
+    const lift = () => ((held = false), touched());
     const onScroll = () => {
-      if (!placing) note();
+      if (placing || (!held && performance.now() > theirs)) return;
+      theirs = Math.max(theirs, performance.now() + 250); // (a glide carrying on)
+      note();
     };
+    const inputs = ["touchstart", "touchmove", "wheel", "keydown", "pointerdown"] as const;
+    inputs.forEach((t) => sc.addEventListener(t, touched, { passive: true }));
+    sc.addEventListener("pointerdown", press, { passive: true });
+    sc.addEventListener("touchstart", press, { passive: true });
+    window.addEventListener("pointerup", lift, { passive: true });
+    window.addEventListener("pointercancel", lift, { passive: true });
+    window.addEventListener("touchend", lift, { passive: true });
+    window.addEventListener("touchcancel", lift, { passive: true });
     anchorNow.current = note;
-    const ro = new ResizeObserver(() => {
+    anchorFollow.current = (ms) => (theirs = Math.max(theirs, performance.now() + ms));
+    const place = () => {
       const a = anchor;
       if (!a || !a.el.isConnected) return;
       const room = Math.max(0, a.el.offsetHeight - sc.clientHeight);
@@ -526,14 +561,25 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       sc.scrollTop = want;
       a.off = want - a.el.offsetTop;
       requestAnimationFrame(() => (placing = false));
-    });
+    };
+    const ro = new ResizeObserver(place);
+    const offHeights = onAyahHeights(place);
     sc.querySelectorAll("section[data-key]").forEach((s) => ro.observe(s));
     note();
     sc.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       anchorNow.current = () => {};
+      anchorFollow.current = () => {};
       ro.disconnect();
+      offHeights();
       sc.removeEventListener("scroll", onScroll);
+      inputs.forEach((t) => sc.removeEventListener(t, touched));
+      sc.removeEventListener("pointerdown", press);
+      sc.removeEventListener("touchstart", press);
+      window.removeEventListener("pointerup", lift);
+      window.removeEventListener("pointercancel", lift);
+      window.removeEventListener("touchend", lift);
+      window.removeEventListener("touchcancel", lift);
     };
   }, [data, settings.view, bookMode]);
 
@@ -564,12 +610,39 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     [fadeThen, set],
   );
   const setMode = useCallback((p: Partial<Settings>) => fadeThen(() => set(p)), [fadeThen, set]);
+
+  /* the context switched on or off: every ayah near the frame changes height. Where the reader is
+     (the ayah at the top of the frame, and how far into it) is noted at the press, and kept while
+     the ayahs settle their new heights; switched again before they have, the place first noted is
+     the one kept. The reader scrolling lets it go. */
+  const ctxKeep = useRef<{ n: number; off: number; frac: number } | null>(null);
+  const placeKept = useRef<() => void>(() => {});
+  // the place set again whenever an ayah changes height (after the page is laid out, before it is
+  // drawn: no frame shows another ayah), and each frame while it is held (below)
+  useLayoutEffect(() => {
+    const sc = scroller.current;
+    if (!sc || !data || settings.view !== 3) return;
+    placeKept.current = () => {
+      const k = ctxKeep.current;
+      const el = k && sc.querySelector<HTMLElement>(`[data-n="${k.n}"]`);
+      if (!k || !el) return;
+      // the same part of the ayah: as far into it, in proportion (its words came or went)
+      const want = el.offsetTop + (k.off < 4 ? 0 : Math.round(k.frac * el.offsetHeight));
+      if (Math.abs(sc.scrollTop - want) > 1) sc.scrollTop = want;
+    };
+    const ro = new ResizeObserver(() => placeKept.current());
+    sc.querySelectorAll("[data-n]").forEach((el) => ro.observe(el));
+    const offHeights = onAyahHeights(() => placeKept.current());
+    return () => {
+      ro.disconnect();
+      offHeights();
+      placeKept.current = () => {};
+    };
+  }, [data, settings.view, bookMode]);
   const toggleContext = useCallback(() => {
-    const st = useStore.getState().settings;
-    const next = { showContext: !st.showContext };
-    if (st.view === 3 && st.translation === "qme" && st.readingMode !== "arabic") fadeThen(() => set(next));
-    else set(next);
-  }, [fadeThen, set]);
+    // (at once, from the state as it is now: quick presses each count)
+    set({ showContext: !useStore.getState().settings.showContext });
+  }, [set]);
   const seen = useRef({ view: settings.view, ctx: settings.showContext });
   useLayoutEffect(() => {
     const was = seen.current;
@@ -577,14 +650,41 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     const sc = scroller.current;
     if (!sc) return;
     if (was.view === settings.view) {
-      if (was.ctx === settings.showContext || settings.view !== 3) return;
-      // the context in the multiple-ayah view: the page stays where it is and fades back in
+      if (was.ctx === settings.showContext) return;
+      // (the one-ayah view keeps its place itself: its anchor, above)
+      if (settings.view !== 3) return;
+      // the words settling in softly; the reader held where they were (the place noted just before)
       if (!settings.reduceMotion && settings.translation === "qme" && settings.readingMode !== "arabic")
-        sc.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 340, easing: "cubic-bezier(0, 0, 0.2, 1)", fill: "backwards" });
+        sc.animate([{ opacity: 0.2 }, { opacity: 1 }], { duration: 320, easing: "cubic-bezier(0, 0, 0.2, 1)" });
+      if (!ctxKeep.current && spot.current) ctxKeep.current = { ...spot.current };
+      placeKept.current();
+      // held until the reader scrolls, or the ayahs out of sight have all changed (Ayah.tsx: a few
+      // at a time, nearest first, within about a second of the switch)
+      const letGo = () => {
+        ctxKeep.current = null;
+      };
+      const opts = { passive: true } as const;
+      sc.addEventListener("wheel", letGo, opts);
+      sc.addEventListener("touchstart", letGo, opts);
+      sc.addEventListener("pointerdown", letGo, opts);
+      sc.addEventListener("keydown", letGo);
+      const timer = window.setTimeout(letGo, 2600);
+      let raf = requestAnimationFrame(function hold() {
+        placeKept.current();
+        if (ctxKeep.current) raf = requestAnimationFrame(hold);
+      });
       fadeOut.current?.cancel();
       fadeOut.current = null;
-      return;
+      return () => {
+        cancelAnimationFrame(raf);
+        window.clearTimeout(timer);
+        sc.removeEventListener("wheel", letGo);
+        sc.removeEventListener("touchstart", letGo);
+        sc.removeEventListener("pointerdown", letGo);
+        sc.removeEventListener("keydown", letGo);
+      };
     }
+    ctxKeep.current = null;
     const place = () => {
       const n = activeRef.current;
       const el = sc.querySelector<HTMLElement>(`[data-n="${n}"]`);
@@ -1936,7 +2036,7 @@ function Opener({
           >
             <span className="label">{mobile ? "Surah summary" : "Read the surah summary"}</span>
           </button>
-          <motion.span className="label text-[var(--box-faint)]" animate={{ y: [0, 5, 0] }} transition={{ duration: 2.2, repeat: Infinity, ease: "easeInOut" }}>
+          <motion.span className="label text-[var(--box-faint)]" animate={{ y: [0, 5, 0] }} transition={{ duration: 2.2, repeat: 4, ease: "easeInOut" }}>
             Scroll to begin surah ↓
           </motion.span>
         </motion.div>

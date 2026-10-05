@@ -13,8 +13,13 @@ function context() {
     ctx = new AC();
   }
   if (ctx.state === "suspended") ctx.resume().catch(() => {});
+  // (running, an audio engine keeps a phone's sound hardware awake, sound or no sound: it rests
+  // once the site has been quiet a while, and the next sound wakes it)
+  window.clearTimeout(rest);
+  rest = window.setTimeout(() => ctx?.state === "running" && ctx.suspend().catch(() => {}), 8000);
   return ctx;
 }
+let rest = 0;
 
 function noiseBuffer(c: AudioContext) {
   if (noise && noise.sampleRate === c.sampleRate) return noise;

@@ -72,8 +72,8 @@ export function SettingsPanel({
                   onClick={() => setTab(t.id)}
                   aria-current={tab === t.id}
                   className={cn(
-                    "display-face group relative text-left leading-[1.1] tracking-[-0.02em] transition-colors duration-300",
-                    mobile ? "text-[22px]" : "text-[clamp(30px,3.9vw,50px)]",
+                    "group relative text-left font-sans leading-[1.1] tracking-[-0.02em] transition-colors duration-300",
+                    mobile ? "text-[22px]" : "text-[clamp(30px,4.2vw,56px)]",
                     tab === t.id ? "text-[var(--box-fg)]" : "text-[var(--box-faint)] hover:text-[var(--box-muted)]",
                   )}
                 >

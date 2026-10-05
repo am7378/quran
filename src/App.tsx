@@ -17,6 +17,7 @@ import { useStore } from "@/lib/store";
 import { useUI, type MenuItem } from "@/lib/ui";
 import { isLongPressMenu, watchLongPress, watchTwoFingerTap } from "@/lib/touch";
 import { watchSounds } from "@/lib/uiSounds";
+import { isTouch, watchIdle } from "@/lib/motion";
 
 type Start = { surah: number; ayah: number; from?: OpenRequest["from"]; showOpener?: boolean };
 
@@ -126,6 +127,8 @@ export default function App() {
 
   // the site's sounds: taps, switches, keys (each kind can be turned off in Settings → Sound)
   useEffect(() => watchSounds(), []);
+  // a phone at rest: the skies hold still (lib/motion)
+  useEffect(() => watchIdle(), []);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -214,7 +217,7 @@ export default function App() {
 
   return (
     <>
-      <Backdrop theme={settings.theme} still={focus && phase === "read"} />
+      <Backdrop theme={settings.theme} still={focus && phase === "read"} grain={settings.grain} />
 
       <Frame rect={rect} instant={firstFrame} quick={reflow} amplitude={settings.reduceMotion || settings.theme === "mono" || settings.theme === "folio" || settings.theme === "paper" || focus ? 0 : phase === "read" ? 0.45 : 1}>
         <AnimatePresence>
@@ -268,7 +271,7 @@ export default function App() {
           <feDisplacementMap in="SourceGraphic" in2="n" scale="0.9" />
         </filter>
       </svg>
-      <Grain on={settings.grain} />
+      <Grain on={settings.grain && !isTouch()} />
     </>
   );
 }

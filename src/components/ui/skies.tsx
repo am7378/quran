@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { SKY } from "@/lib/motion";
 
 /**
  * The themes' living skies, each one fragment shader on one WebGL canvas that fills its parent:
@@ -179,6 +180,7 @@ function ShaderSky({ main, className, still }: { main: string; className?: strin
     if (!canvas) return;
     const gl = canvas.getContext("webgl", { antialias: false });
     if (!gl) return;
+    const budget = SKY(); // (a phone draws it less often, at fewer pixels)
     const derivatives = !!gl.getExtension("OES_standard_derivatives");
     const frag =
       (derivatives ? "#extension GL_OES_standard_derivatives : enable\n#define FW(k) fwidth(k)\n" : "#define FW(k) 0.06\n") + COMMON + main;
@@ -205,7 +207,7 @@ function ShaderSky({ main, className, still }: { main: string; className?: strin
     const size = () => {
       const b = canvas.getBoundingClientRect();
       const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
-      const k = Math.min(1, Math.sqrt(1_600_000 / Math.max(1, b.width * dpr * b.height * dpr)));
+      const k = Math.min(1, Math.sqrt(budget.pixels / Math.max(1, b.width * dpr * b.height * dpr)));
       const w = Math.max(1, Math.round(b.width * dpr * k)), hgt = Math.max(1, Math.round(b.height * dpr * k));
       if (canvas.width !== w || canvas.height !== hgt) {
         canvas.width = w;
@@ -223,7 +225,7 @@ function ShaderSky({ main, className, still }: { main: string; className?: strin
     };
     const draw = (now: number) => {
       raf = requestAnimationFrame(draw);
-      if (now - last < 33) return;
+      if (now - last < 1000 / budget.fps - 1) return;
       last = now;
       paint(now);
     };
