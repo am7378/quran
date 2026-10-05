@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "@fontsource-variable/alegreya": "^5.3.0",
-    "@fontsource-variable/archivo": "^5.3.0",
     "@fontsource-variable/bodoni-moda": "^5.3.0",
     "@fontsource-variable/brygada-1918": "^5.3.0",
     "@fontsource-variable/caveat": "^5.3.0",
@@ -22,8 +21,8 @@
     "@fontsource-variable/geist-mono": "^5.3.0",
     "@fontsource-variable/josefin-sans": "^5.3.0",
     "@fontsource-variable/jost": "^5.3.0",
+    "@fontsource-variable/lexend": "^5.3.0",
     "@fontsource-variable/manrope": "^5.3.0",
-    "@fontsource-variable/martian-mono": "^5.3.0",
     "@fontsource-variable/newsreader": "^5.3.0",
     "@fontsource-variable/space-grotesk": "^5.3.0",
     "@fontsource/amiri-quran": "^5.3.0",

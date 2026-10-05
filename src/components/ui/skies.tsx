@@ -169,52 +169,63 @@ void main() {
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }`;
 
-/** Blue: royal blue printed in one ink, as a poster is: a halftone screen of deeper blue dots on a
- *  lattice turned fifteen degrees, the dots' size following broad slow waves that sweep across the
- *  sheet (where they crest the screen is bare, where they trough the dots run together), and on the
- *  bare crests a finer screen of pale dots, as a second plate printed a little out of register. */
+/** Blue: the night of blue.jpg in its own colours (a sky from #050d2e overhead to #0c225c, darker
+ *  again at the horizon, long dark clouds across it, black below) with its mountains drawn the way a
+ *  laser scan draws them (d5): a cloud of points, royal blue, thickest and brightest along the crests
+ *  where the sky lights them, a beam passing slowly over the range; a faint grid on the dark ground. */
 const BLUE = `
-float screen(vec2 uv, float N, float ang, float tone, float px) {
-  float cs = cos(ang), sn = sin(ang);
-  vec2 q = vec2(cs * uv.x - sn * uv.y, sn * uv.x + cs * uv.y) * N;
-  vec2 f = fract(q) - 0.5;
-  float rad = 0.56 * sqrt(clamp(tone, 0.0, 1.0));
-  return (1.0 - smoothstep(rad - px * N, rad + px * N, length(f))) * step(0.015, rad);
-}
-float toneAt(vec2 cp, float tt, float t) {
-  float w = fbm(cp * 1.05 + vec2(tt * 0.6, -tt * 0.4));
-  float band = sin((cp.x * 0.85 - cp.y * 1.55) * 3.0 + w * 4.2 - t * 0.085);
-  return smoothstep(0.16, 0.96, 0.5 + 0.44 * band + (w - 0.5) * 0.95);
+float ridgeAt(float x, float port) {
+  float px = mix(0.3, 0.1, port);
+  float d = abs(x - px);
+  float peak = 0.17 * exp(-d * 5.0) + 0.06 * exp(-d * 1.5);
+  float side = 0.05 * exp(-abs(x + 0.62) * 3.2) + 0.035 * exp(-abs(x - 0.92) * 2.8);
+  float rock = (fbm(vec2(x * 3.2, 1.7)) - 0.5) * (0.05 + peak * 0.5) + (n(vec2(x * 15.0, 7.3)) - 0.5) * 0.02;
+  return peak + side + rock;
 }
 void main() {
   float m = min(r.x, r.y);
+  vec2 p = (gl_FragCoord.xy - 0.5 * r) / m;
   float port = smoothstep(1.1, 1.6, r.y / r.x);
-  float tt = t * 0.03;
-  vec2 uv = gl_FragCoord.xy / m;
-  float px = 1.0 / m;
-  // the deep plate: the tone read at each dot's own centre (a dot is one size throughout)
-  float N = mix(66.0, 46.0, port);
-  float ang = 0.2618;
-  float cs = cos(ang), sn = sin(ang);
-  vec2 q = vec2(cs * uv.x - sn * uv.y, sn * uv.x + cs * uv.y) * N;
-  vec2 c = (floor(q) + 0.5) / N;
-  vec2 cu = vec2(cs * c.x + sn * c.y, -sn * c.x + cs * c.y) - 0.5 * r / m;
-  float tone = toneAt(cu, tt, t);
-  float deep = screen(uv, N, ang, tone, px);
-  // the pale plate, finer and at another angle, only where the deep one is bare
-  float N2 = N * 1.45, ang2 = -0.7854;
-  float cs2 = cos(ang2), sn2 = sin(ang2);
-  vec2 q2 = vec2(cs2 * uv.x - sn2 * uv.y, sn2 * uv.x + cs2 * uv.y) * N2;
-  vec2 c2 = (floor(q2) + 0.5) / N2;
-  vec2 cu2 = vec2(cs2 * c2.x + sn2 * c2.y, -sn2 * c2.x + cs2 * c2.y) - 0.5 * r / m;
-  float pale = screen(uv, N2, ang2, (0.42 - toneAt(cu2, tt, t)) * 1.5, px);
-  vec3 royal = vec3(0.255, 0.412, 0.882);
-  vec3 ink = vec3(0.07, 0.15, 0.49);
-  vec3 light = vec3(0.56, 0.67, 0.98);
-  vec3 col = mix(royal, light, pale * 0.55);
-  col = mix(col, ink, deep);
-  // the paper's own tooth
-  col += (grain(gl_FragCoord.xy) - 0.5) * 0.03;
+  float tt = t * 0.02;
+  float hz = mix(-0.14, -0.8, port); // (on a phone the range along the foot, under the frame)
+  float topY = 0.5 * r.y / m;
+  float sy = clamp((p.y - hz) / (topY - hz), 0.0, 1.0);
+  // the sky, the picture's own blues
+  vec3 top = vec3(0.020, 0.051, 0.180);
+  vec3 mid = vec3(0.047, 0.133, 0.361);
+  vec3 low = vec3(0.004, 0.098, 0.278);
+  vec3 col = mix(low, mid, smoothstep(0.0, 0.32, sy));
+  col = mix(col, top, smoothstep(0.32, 1.0, sy));
+  float cl = fbm(vec2(p.x * 1.3 + tt, p.y * 4.5 - tt * 0.25));
+  col *= 1.0 - 0.5 * smoothstep(0.52, 0.8, cl) * smoothstep(0.0, 0.25, p.y - hz);
+  // the range: black, scanned. Its points lie in rows that follow the crest down the slopes (as a
+  // scanner's lines do), close and bright along the crest where the sky lights it, fewer and fainter
+  // below, until the foot of the range is black
+  float ridge = hz + ridgeAt(p.x, port) * mix(1.0, 0.85, port);
+  float inside = smoothstep(ridge + 0.0015, ridge - 0.0015, p.y);
+  float below = max(ridge - p.y, 0.0);
+  float R = mix(150.0, 110.0, port); // rows to a unit
+  float v = below * R * (1.0 + below * 2.5); // (closer together down the slope, as it turns away)
+  float row = floor(v);
+  float Nx = mix(190.0, 140.0, port);
+  float u = p.x * Nx + h(vec2(row, 3.0)) * 7.0;
+  float col_ = floor(u);
+  vec2 d = vec2((fract(u) - 0.5) / Nx, (fract(v) - 0.5) / (R * (1.0 + below * 5.0)));
+  float rad = mix(0.0016, 0.0021, port);
+  float dotm = 1.0 - smoothstep(rad * 0.55, rad * 1.35, length(d));
+  float lit = exp(-below * 11.0);
+  // the beam: a slow sweep across the range, the points it passes brighter
+  float bx = mod(t * 0.03, 3.4) - 1.7;
+  float bd = (p.x - bx) * 6.0;
+  float beam = exp(-bd * bd) * smoothstep(0.0, 0.05, lit);
+  float keep = step(h(vec2(row, col_)), 0.06 + 0.94 * lit + 0.25 * beam);
+  float k = dotm * keep * (0.08 + 0.92 * lit + 0.75 * beam);
+  vec3 rock = vec3(0.002, 0.003, 0.01) + vec3(0.255, 0.412, 0.882) * k;
+  // the crest itself, a fine line where the points begin
+  float crest = 1.0 - smoothstep(0.0, 0.003, abs(p.y - ridge));
+  rock += vec3(0.255, 0.412, 0.882) * crest * 0.4;
+  col = mix(col, rock, inside);
+  col += (grain(gl_FragCoord.xy) - 0.5) * 0.018;
   gl_FragColor = vec4(col, 1.0);
 }
 `;

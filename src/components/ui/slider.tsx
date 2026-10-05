@@ -177,10 +177,10 @@ export function AyahSlider({ value, min = 1, max, onChange, onCommit, onEnd, end
         >
           {/* track */}
           <div
-            className="absolute left-0 right-0 bg-[var(--box-line)] transition-[height,top] duration-150"
+            className="slider-track absolute left-0 right-0 bg-[var(--box-line)] transition-[height,top] duration-150"
             style={{ height: hot ? TRACK + 2 : TRACK, top: H / 2 - (hot ? TRACK + 2 : TRACK) / 2 }}
           >
-            <motion.div className="absolute left-0 top-0 h-full bg-[var(--box-fg)]" style={{ width: fill }} />
+            <motion.div className="slider-fill absolute left-0 top-0 h-full bg-[var(--box-fg)]" style={{ width: fill }} />
             <motion.div
               className="absolute top-0 h-full bg-[var(--box-faint)] transition-opacity duration-200"
               style={{ left: previewLeft, width: previewWidth, opacity: hovering && !pressed ? 0.9 : 0 }}

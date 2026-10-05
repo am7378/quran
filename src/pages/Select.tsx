@@ -198,6 +198,30 @@ export function Select({
     useUI.getState().openMenu(e.clientX, e.clientY, items);
   };
 
+  // a computer's keys (Settings → Guide lists them): the arrows turn the ring, Enter opens the surah in
+  // front at its ayah, / searches, C continues where the reader left off, a comma opens Settings
+  const keysNow = useRef<(e: KeyboardEvent) => void>(() => {});
+  keysNow.current = (e: KeyboardEvent) => {
+    const t = e.target as HTMLElement | null;
+    const ui = useUI.getState();
+    if (e.defaultPrevented || settingsOpen || ui.about || ui.menu || e.ctrlKey || e.metaKey || e.altKey || !ring) return;
+    // (where a field, the slider or the ring itself has the keys, they keep them)
+    if (t?.closest?.("input, textarea, [contenteditable], [role=slider], [role=listbox], [role=menu], [role=dialog]")) return;
+    const cur = surahs[mod(Math.round(pos.get()), COUNT)];
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    if (k === "ArrowDown" || k === "ArrowRight") return e.preventDefault(), turnTo((cur.n % 114) + 1);
+    if (k === "ArrowUp" || k === "ArrowLeft") return e.preventDefault(), turnTo(((cur.n + 112) % 114) + 1);
+    if (k === "Enter" && !t?.closest?.("button, a")) return e.preventDefault(), openFront();
+    if (k === "/") return e.preventDefault(), rootRef.current?.querySelector<HTMLInputElement>("input")?.focus();
+    if (k === "c" && resume && resumable) return e.preventDefault(), onOpen({ surah: resume.s, ayah: resume.v });
+    if (k === ",") return e.preventDefault(), onSettings();
+  };
+  useEffect(() => {
+    const on = (e: KeyboardEvent) => keysNow.current(e);
+    window.addEventListener("keydown", on);
+    return () => window.removeEventListener("keydown", on);
+  }, []);
+
   const colCenter = mobile ? W / 2 : (W * 2) / 3;
   const colW = mobile ? W - 36 : clamp(W * 0.36, 300, 440);
 

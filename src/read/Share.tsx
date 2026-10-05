@@ -657,97 +657,101 @@ const lunar: Look = (() => {
   };
 })();
 
-/* Blue: a poster in one colour. The royal blue printed as a halftone screen, its dots swelling and
-   thinning in broad waves; a white sheet laid on it with a hard navy shadow and crop marks at its
-   corners; the ayah in ink on the sheet, a blue bar between; the surah's name stamped white on a
-   block of the blue, its number in a technical mono beside it. */
+/* Blue: the night of blue.jpg: its sky, black below, the range across it drawn as a scan's cloud of
+   royal blue points, brightest on the crests; the ayah over the sky in Lexend, the Arabic white,
+   the translation a pale royal blue; the reference small along the foot, the surah's name in royal. */
 const blue: Look = (() => {
-  const sheet = (k: Ctx) => {
-    const mx = Math.round(k.S * (k.format === "landscape" ? 0.07 : 0.085));
-    const my = Math.round(k.S * (k.format === "story" ? 0.14 : 0.085));
-    return { x0: mx, y0: my, x1: k.W - mx, y1: k.H - my - Math.round(k.S * 0.012) };
-  };
+  const horizonOf = (k: Ctx) => k.H * (k.format === "story" ? 0.7 : 0.74);
   return {
-    fonts: ['italic 800 40px "Archivo Variable"', '400 24px "Archivo Variable"', '500 20px "Martian Mono Variable"'],
-    ar: "#0e1014",
-    tr: "#0e1014",
-    trFont: (px: number) => `400 ${Math.round(px * 0.94)}px "Archivo Variable", "Marks Sans", sans-serif`,
+    fonts: ['300 40px "Lexend Variable"', '400 24px "Lexend Variable"'],
+    ar: "#eef1f8",
+    tr: "#a9bbf6",
+    trFont: (px: number) => `300 ${Math.round(px * 0.9)}px "Lexend Variable", "Marks Sans", sans-serif`,
     paint(g: CanvasRenderingContext2D, k: Ctx) {
       const { W, H, S } = k;
-      g.fillStyle = "#4169e1";
-      g.fillRect(0, 0, W, H);
-      // the screen: dots of a deeper blue on a lattice turned fifteen degrees, their size following
-      // broad waves across the picture
-      const cell = S * 0.021;
-      const ang = 0.2618, cs = Math.cos(ang), sn = Math.sin(ang);
-      const ph = (k.seed % 97) * 0.13;
-      const tone = (x: number, y: number) => {
-        const u = x / S, v = y / S;
-        const w = 0.5 + 0.5 * Math.sin((u * 0.85 - v * 1.55) * 6.0 + Math.sin(u * 2.3 + ph) * 1.6 + ph);
-        return Math.max(0, Math.min(1, (w - 0.18) / 0.8));
+      const hz = horizonOf(k);
+      // the sky, the picture's own blues
+      const sky = g.createLinearGradient(0, 0, 0, hz);
+      sky.addColorStop(0, "#050d2e");
+      sky.addColorStop(0.62, "#0c225c");
+      sky.addColorStop(1, "#011947");
+      g.fillStyle = sky;
+      g.fillRect(0, 0, W, hz + 2);
+      g.fillStyle = "#000";
+      g.fillRect(0, hz, W, H - hz);
+      // long dark clouds
+      const rnd = seeded(k.seed + 21);
+      for (let i = 0; i < 8; i++) {
+        const cy = hz * (0.15 + rnd() * 0.75), hh = S * (0.012 + rnd() * 0.025);
+        const cx = rnd() * W, cw = W * (0.35 + rnd() * 0.5);
+        const soft = g.createRadialGradient(0, 0, 0, 0, 0, 1);
+        soft.addColorStop(0, `rgba(2,6,22,${0.3 + rnd() * 0.3})`);
+        soft.addColorStop(1, "rgba(2,6,22,0)");
+        g.save();
+        g.translate(cx, cy);
+        g.scale(cw / 2, hh);
+        g.fillStyle = soft;
+        g.beginPath();
+        g.arc(0, 0, 1, 0, Math.PI * 2);
+        g.fill();
+        g.restore();
+      }
+      // the range: its crest line, black below it, a cloud of points over it
+      const jag = seeded(k.seed + 5);
+      const knots = Array.from({ length: 12 }, () => jag() - 0.5);
+      const fine = Array.from({ length: 70 }, () => jag() - 0.5);
+      const noise = (arr: number[], t: number) => {
+        const f = t * (arr.length - 1), i = Math.min(arr.length - 2, Math.floor(f)), u = f - i;
+        return arr[i] + (arr[i + 1] - arr[i]) * u * u * (3 - 2 * u);
       };
-      g.fillStyle = "#13277d";
-      const reach = Math.hypot(W, H);
-      for (let i = -reach / cell; i < reach / cell; i++) {
-        for (let j = -reach / cell; j < reach / cell; j++) {
-          const qx = (i + 0.5) * cell, qy = (j + 0.5) * cell;
-          const x = cs * qx + sn * qy, y = -sn * qx + cs * qy;
-          if (x < -cell || y < -cell || x > W + cell || y > H + cell) continue;
-          const rad = 0.56 * Math.sqrt(tone(x, y)) * cell;
-          if (rad < cell * 0.05) continue;
+      const crest = (x: number) => {
+        const t = x / W, d = Math.abs(x - W * 0.62) / W;
+        const peak = 0.16 * Math.exp(-d * 9) + 0.05 * Math.exp(-d * 2.6);
+        const side = 0.05 * Math.exp((-Math.abs(x - W * 0.14) / W) * 5) + 0.03 * Math.exp((-Math.abs(x - W * 0.9) / W) * 6);
+        return hz - S * (0.02 + peak + side + noise(knots, t) * (0.03 + peak * 0.22) + noise(fine, t) * 0.007);
+      };
+      g.fillStyle = "#010208";
+      g.beginPath();
+      g.moveTo(0, H);
+      for (let x = 0; x <= W; x += S * 0.003) g.lineTo(x, crest(x));
+      g.lineTo(W, H);
+      g.closePath();
+      g.fill();
+      const step = S * 0.0085, dots = seeded(k.seed + 9);
+      for (let x = 0; x < W; x += step)
+        for (let y = crest(x); y < H; y += step) {
+          const below = (y - crest(x)) / S;
+          const lit = Math.exp(-below * 10) + 0.25 * dots() - 0.1;
+          if (dots() > 0.35 + lit * 0.5) continue;
+          g.fillStyle = `rgba(65,105,225,${Math.min(0.95, 0.18 + lit * 0.8)})`;
           g.beginPath();
-          g.arc(x, y, rad, 0, Math.PI * 2);
+          g.arc(x + (dots() - 0.5) * step * 0.6, y + (dots() - 0.5) * step * 0.6, S * 0.0016, 0, Math.PI * 2);
           g.fill();
         }
-      }
-      // the sheet, its hard shadow, the crop marks round it
-      const { x0, y0, x1, y1 } = sheet(k);
-      const off = Math.round(S * 0.016);
-      g.fillStyle = "#0f1f5c";
-      g.fillRect(x0 + off, y0 + off, x1 - x0, y1 - y0);
-      g.fillStyle = "#f3f2ee";
-      g.fillRect(x0, y0, x1 - x0, y1 - y0);
-      g.strokeStyle = "#0e1014";
-      g.lineWidth = Math.max(2, S * 0.0022);
-      g.strokeRect(x0, y0, x1 - x0, y1 - y0);
-      g.strokeStyle = "rgba(255,255,255,0.92)";
-      g.lineWidth = Math.max(2, S * 0.002);
-      const gap = S * 0.022, len = S * 0.016;
-      for (const [cx, cy, sx, sy] of [[x0, y0, -1, -1], [x1, y0, 1, -1], [x0, y1, -1, 1], [x1, y1, 1, 1]]) {
-        line(g, cx + sx * gap, cy + sy * gap, cx + sx * (gap - len), cy + sy * gap);
-        line(g, cx + sx * gap, cy + sy * gap, cx + sx * gap, cy + sy * (gap - len));
-      }
-      grainOn(g, k, 0.35);
-      return { top: y0 + S * 0.06, bottom: y1 - k.fs * 4.6, padX: x0 + W * (k.format === "landscape" ? 0.07 : 0.06) };
+      g.strokeStyle = "rgba(65,105,225,0.45)";
+      g.lineWidth = Math.max(1.5, S * 0.0014);
+      g.beginPath();
+      for (let x = 0; x <= W; x += S * 0.003) (x === 0 ? g.moveTo(x, crest(x)) : g.lineTo(x, crest(x)));
+      g.stroke();
+      grainOn(g, k, 0.3);
+      return { top: S * 0.1, bottom: hz - S * 0.24, padX: W * (k.format === "landscape" ? 0.12 : 0.11) };
     },
     rule(g: CanvasRenderingContext2D, x: number, y: number) {
       g.fillStyle = "#4169e1";
-      g.fillRect(x - 26, y - 3, 52, 6);
+      g.fillRect(x - 22, y - 1.5, 44, 3);
     },
     reference(g: CanvasRenderingContext2D, k: Ctx, name: string, ref: string) {
-      const { x0, x1, y1 } = sheet(k);
-      const pad = k.S * 0.035;
-      const y = y1 - pad - k.fs * 1.1;
-      // the name: white on a block of the blue, heavy and leaning
-      g.font = `italic 800 ${Math.round(k.fs * 1.5)}px "Archivo Variable", "Marks Sans", sans-serif`;
-      spacing(g, -k.fs * 0.02);
+      const y = k.H - k.m - k.fs * 1.4;
+      const pad = k.S * 0.07;
       g.textBaseline = "middle";
-      g.textAlign = "left";
-      const w = g.measureText(name).width;
-      const bx = x0 + pad, bh = k.fs * 2.3;
-      g.fillStyle = "#0e1014";
-      g.fillRect(bx + 4, y - bh / 2 + 4, w + k.fs * 1.1, bh);
-      g.fillStyle = "#4169e1";
-      g.fillRect(bx, y - bh / 2, w + k.fs * 1.1, bh);
-      g.fillStyle = "#ffffff";
-      g.fillText(name, bx + k.fs * 0.5, y + k.fs * 0.05);
-      // the reference in mono capitals
-      g.font = `500 ${Math.round(k.fs * 1.05)}px "Martian Mono Variable", "Marks Sans", monospace`;
-      spacing(g, k.fs * 0.08);
-      g.fillStyle = "#0e1014";
-      g.textAlign = "right";
-      g.fillText(ref, x1 - pad, y);
+      g.font = `400 ${Math.round(k.fs * 1.15)}px "Lexend Variable", "Marks Sans", sans-serif`;
       spacing(g, 0);
+      g.textAlign = "left";
+      g.fillStyle = "#4169e1";
+      g.fillText(name, pad, y);
+      g.textAlign = "right";
+      g.fillStyle = "rgba(233,236,245,0.7)";
+      g.fillText(ref, k.W - pad, y);
     },
   };
 })();

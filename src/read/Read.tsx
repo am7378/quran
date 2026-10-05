@@ -33,21 +33,22 @@ import { HONORIFICS, glossByTerm, glossFor, loadGlossary } from "./terms";
 import { HighlightMenu, StickyNotes, Toast, WordTip, tipHover, type Tip } from "./Overlays";
 import { ReflectionPanel } from "./Reflection";
 import { SettingsPanel } from "./Settings";
+import { wantKeys } from "./Guide";
 import { SurahSummary } from "./Summary";
 import { ShareDialog, type ShareContent } from "./Share";
 import { arabicFor, inProportion, translationFor } from "./align";
 import { NoteShareDialog } from "./NoteShare";
 import { BookText } from "./Book";
 import { VoiceRecorder } from "./VoiceNote";
-import { rangeToOffsets, rangeToArabicWords, snapToLatinWords, trimRange, arabicWords, translationPieces } from "./text";
+import { rangeToOffsets, rangeToArabicWords, snapToLatinWords, trimRange, arabicWords, translationPieces, shownSlice } from "./text";
 import { AyahSlider } from "@/components/ui/slider";
 import { SurahArt } from "@/components/SurahCard";
 import { SearchBox } from "@/components/SearchBox";
 import { ImmersivePanel, MenuGlyph, Reveal, SettingsGlyph } from "@/components/ImmersivePanel";
 import { BracketButton } from "@/components/bits";
 import { QuillGlyph } from "@/components/glyphs";
-import { arabicText, loadSurah, pad3, spellHonorifics, translationText, type Surah, type SurahData, type Verse } from "@/lib/data";
-import { useStore, type Highlight, type HighlightField, type Settings } from "@/lib/store";
+import { arabicText, loadSurah, pad3, spellHonorifics, translationText, type Surah, type SurahData, type Translation, type Verse } from "@/lib/data";
+import { HIGHLIGHT_COLORS, useStore, type Highlight, type HighlightField, type Settings } from "@/lib/store";
 import { flipAngle, holdFlip, settleFlip, useUI, type MenuItem } from "@/lib/ui";
 import { playHighlight, strokeEnd, strokeMove, strokeRecently } from "@/lib/sound";
 import { isLongPressMenu } from "@/lib/touch";
@@ -99,7 +100,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
 
   // the ayahs as a book: the multiple-ayah view, with the Arabic alone or a translation alone
   const bookMode = settings.view === 3 && settings.readingMode !== "both" && settings.book;
-  const [panel, setPanel] = useState<null | "settings" | "saved" | "reflection" | "search">(null);
+  const [panel, setPanel] = useState<null | "settings" | "saved" | "reflection" | "search" | "guide">(null);
   const [tip, setTip] = useState<Tip | null>(null);
   const closeTip = useCallback(() => setTip(null), []);
   // a panel opened over the page: what was floating over the page goes
@@ -938,8 +939,9 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       // a highlight of its own, even over another: it joins those of its colour once its colour
       // is settled (the menu closes), and where colours differ both stay, their inks combined
       const id = uid();
-      // the text kept with the highlight is what was shown (the Arabic in the script being read)
-      const text = aw ? aw.words.filter((w) => w.start >= s && w.end <= e).map((w) => w.text).join(" ") : canon.slice(s, e);
+      // the text kept with the highlight is what was shown (the Arabic in the script being read; the
+      // translation as it reads, its bracketed context only if it was showing)
+      const text = aw ? aw.words.filter((w) => w.start >= s && w.end <= e).map((w) => w.text).join(" ") : shownSlice(translationPieces(v, fieldName as Translation).pieces, settings.showContext, s, e);
       addHighlight({ id, key, field: fieldName, start: s, end: e, color: "yellow", text, at: Date.now() });
       sel?.removeAllRanges();
       strokeEnd();
@@ -1181,36 +1183,14 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     return () => cancelAnimationFrame(raf);
   }, [reflow]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ── keyboard ───────────────────────────────────────────────── */
+  /* ── keyboard (a computer's): every button's action has its key, listed in Settings → Guide.
+     The handler is set each render (below, keysNow), so it acts on the page as it is now ── */
+  const keysNow = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const typing = (e.target as HTMLElement).closest?.("input, textarea, [contenteditable]");
-      if (typing) return;
-      if (e.key === "/" && !panel) {
-        e.preventDefault();
-        setPanel("search");
-      } else if (e.key === "Escape" && useUI.getState().focus) {
-        enterFocus(false);
-      } else if ((e.key === "f" || e.key === "F") && !e.metaKey && !e.ctrlKey && !e.altKey) {
-        enterFocus(!useUI.getState().focus);
-      } else if (e.key === "Escape") {
-        setPanel(null);
-        setMenu(null);
-        if (useUI.getState().flipped) setFlipped(false);
-      } else if (useUI.getState().flipped) {
-        return;
-      } else if (!panel && (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "PageDown" || e.key === "PageUp" || e.key === " ")) {
-        if (document.activeElement !== scroller.current && !(e.target as HTMLElement).closest?.("[role=slider]")) {
-          e.preventDefault();
-          const dir = e.key === "ArrowUp" || e.key === "PageUp" ? -1 : 1;
-          const next = Math.max(0, Math.min(surah.count, activeRef.current + dir));
-          scrollToAyah(next);
-        }
-      }
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [panel, surah, scrollToAyah, setFlipped]);
+    const on = (e: KeyboardEvent) => keysNow.current(e);
+    window.addEventListener("keydown", on);
+    return () => window.removeEventListener("keydown", on);
+  }, []);
 
   /* ── derived ────────────────────────────────────────────────── */
   const hlByKey = useMemo(() => {
@@ -1261,6 +1241,107 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
   const farSettings = onlyContext(lagged, ayahSettings) ? lagged : ayahSettings;
 
   const menuHl = menu ? allHighlights[menu.id] ?? null : null;
+
+  // the keys (the effect above listens; this is what they do, with the page as it is now)
+  keysNow.current = (e: KeyboardEvent) => {
+    const t = e.target as HTMLElement | null;
+    if (e.defaultPrevented || t?.closest?.("input, textarea, [contenteditable]")) return;
+    const flipped = useUI.getState().flipped;
+    const k = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+    const take = () => e.preventDefault();
+    // the ayah in the frame: its own buttons, pressed (their sounds, their pop-ups)
+    const tool = (label: RegExp) => {
+      const sc = scroller.current;
+      const box = settings.view === 1 ? rootRef.current?.querySelector("[data-ayah-tools]") : sc?.querySelector(`section[data-n="${activeRef.current}"] [data-ayah-tools]`);
+      [...(box?.querySelectorAll<HTMLButtonElement>("button") ?? [])].find((b) => label.test(b.getAttribute("aria-label") ?? ""))?.click();
+    };
+    // the newest highlight to be seen in the frame
+    const newestInView = () => {
+      const r = scroller.current?.getBoundingClientRect();
+      if (!r) return null;
+      let best: Highlight | null = null;
+      for (const list of hlByKey.values())
+        for (const h of list) {
+          const m = scroller.current?.querySelector(`[data-hid="${h.id}"]`)?.getBoundingClientRect();
+          if (m && m.bottom > r.top && m.top < r.bottom && (!best || h.at > best.at)) best = h;
+        }
+      return best;
+    };
+    const copyHl = (h: Highlight) => copyText(`${h.text}\n— ${ayn(surah.tc)} ${h.key}`).then((ok) => flash(ok ? "Highlight copied" : "Copy was blocked by the browser"));
+
+    // copy: what is selected (the browser's own copy), else the highlight just made (or open), else
+    // the newest highlight in the frame, else the ayah in the frame
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && k === "c") {
+      const sel = window.getSelection();
+      if ((sel && !sel.isCollapsed && sel.toString().trim()) || panel || flipped) return;
+      take();
+      const h = menuHl ?? newestInView();
+      if (h) {
+        copyHl(h);
+        setMenu(null);
+      } else tool(/^Copy ayah/);
+      return;
+    }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+    // a highlight with its menu open: its colour, its words, a note, a picture, gone
+    if (menuHl && !panel) {
+      const c = "12345".indexOf(k);
+      if (c >= 0) return take(), useStore.getState().updateHighlight(menuHl.id, { color: HIGHLIGHT_COLORS[c] });
+      if (k === "Delete" || k === "Backspace") return take(), removeHighlight(menuHl.id), setMenu(null);
+      if (k === "n" && !e.shiftKey) return take(), newNote(menuHl.key, { hid: menuHl.id, quote: menuHl.text }), setMenu(null);
+      if (k === "n" && e.shiftKey) {
+        const at = rootRef.current?.querySelector(`[data-hid="${menuHl.id}"]`)?.getBoundingClientRect() ?? new DOMRect(innerWidth / 2, innerHeight / 2, 0, 0);
+        return take(), setRecorder({ key: menuHl.key, anchor: at, hid: menuHl.id, quote: menuHl.text }), setMenu(null);
+      }
+      if (k === "p") return take(), openSharePart(menuHl), setMenu(null);
+    }
+
+    if (k === "Escape") {
+      if (useUI.getState().focus) return enterFocus(false);
+      setPanel(null);
+      setMenu(null);
+      if (flipped) setFlipped(false);
+      return;
+    }
+    if (k === "/" && !panel) return take(), setPanel("search");
+    if (k === "?") return take(), panel !== "guide" && wantKeys(), setPanel(panel === "guide" ? null : "guide");
+    if (panel) return; // (a panel open: its own keys)
+    if (k === "t") return take(), setFlipped(!flipped);
+    if (flipped) return;
+
+    // moving through the surah
+    if (k === "ArrowDown" || k === "ArrowUp" || k === "PageDown" || k === "PageUp" || k === " ") {
+      if (document.activeElement === scroller.current || t?.closest?.("[role=slider]")) return;
+      take();
+      const dir = k === "ArrowUp" || k === "PageUp" ? -1 : 1;
+      return scrollToAyah(Math.max(0, Math.min(surah.count, activeRef.current + dir)));
+    }
+    if (k === "Home") return take(), scrollToAyah(0);
+    if (k === "End") return take(), scrollToAyah(surah.count + 1);
+    if (k === "[" && surahN > 1) return take(), go(surahN - 1, 0);
+    if (k === "]" && surahN < 114) return take(), go(surahN + 1, 0);
+    if (k === "i") return take(), onIndex(surahN, activeRef.current);
+
+    // opening
+    if (k === "s") return take(), setPanel("saved");
+    if (k === ",") return take(), setPanel("settings");
+    if (k === "r") return take(), setPanel("reflection");
+
+    // the way of reading
+    if (k === "f") return take(), enterFocus(!useUI.getState().focus);
+    if (k === "v") return take(), switchView(settings.view === 1 ? 3 : 1);
+    if (k === "c") return take(), toggleContext();
+    if (k === "m") {
+      const order = ["both", "arabic", "translation"] as const;
+      return take(), setMode({ readingMode: order[(order.indexOf(settings.readingMode) + 1) % order.length] });
+    }
+
+    // the ayah in the frame
+    if (k === "b") return take(), tool(/bookmark/i);
+    if (k === "n") return take(), tool(e.shiftKey ? /voice note/i : /^Write a note/);
+    if (k === "p") return take(), tool(/^Share ayah/);
+  };
 
   /* when a highlight's menu closes its colour is settled: it joins every highlight of the same
      colour it overlaps or touches (their notes follow it); other colours stay their own */
@@ -1714,6 +1795,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
           {settings.view === 1 && verse && (
             <motion.div
               key="actions"
+              data-ayah-tools
               className="absolute bottom-3 right-[30px] z-20 md:bottom-[18px] md:right-3"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
@@ -1778,7 +1860,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       </footer>
 
       {/* panels */}
-      <SettingsPanel open={panel === "settings" || panel === "saved"} startTab={panel === "saved" ? "saved" : undefined} onClose={() => setPanel(null)} surahs={surahs} onGo={go} mobile={mobile} />
+      <SettingsPanel open={panel === "settings" || panel === "saved" || panel === "guide"} startTab={panel === "saved" ? "saved" : panel === "guide" ? "guide" : undefined} onClose={() => setPanel(null)} surahs={surahs} onGo={go} mobile={mobile} />
       <ReflectionPanel open={panel === "reflection"} onClose={() => setPanel(null)} surah={surah} mobile={mobile} />
       <ImmersivePanel open={panel === "search"} from="left" onClose={() => setPanel(null)} label="Search">
         <SearchPanelBody surahs={surahs} juz={juz} onPick={onPick} onClose={() => setPanel(null)} current={surahN} onSurah={(n) => go(n, 1)} onGo={go} />
@@ -1861,8 +1943,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
           <div className={cn("absolute inset-0 transition-[opacity,visibility] duration-500", focus &&"pointer-events-none invisible opacity-0")}>
                 {/* the ayah's theme: one ayah at a time, with its translation showing (not the Arabic alone,
                     not scrolling freely; a book of the translation has its headings in the text) */}
-                {/* Blue: the surah's measure in a poster's row of captions above its theme, and its
-                    number large, turned on its side, beside the frame's foot */}
+                {/* Blue: the surah's measure in a row of figures above its theme, as d5's */}
                 {settings.theme === "blue" && !mobile && data && data.v.length > 0 && (
                   <>
                     <div className="spec-row pointer-events-none absolute inset-x-0 bottom-full mb-[58px]" aria-hidden>
@@ -1870,9 +1951,6 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
                       <span>{surah.place === "makkah" ? "Makkan" : "Madinan"}</span>
                       <span>{surah.count} ayat</span>
                       <span>{data.v[0].j === data.v[data.v.length - 1].j ? `Juz ${data.v[0].j} (of 30)` : `Juz ${data.v[0].j}–${data.v[data.v.length - 1].j} (of 30)`}</span>
-                    </div>
-                    <div className="blue-num pointer-events-none absolute bottom-0 right-full mr-6" aria-hidden>
-                      {pad3(surahN)}
                     </div>
                   </>
                 )}

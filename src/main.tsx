@@ -30,11 +30,8 @@ import "@fontsource/spectral/300.css";
 import "@fontsource/spectral/300-italic.css";
 import "@fontsource/spectral/400.css";
 import "@fontsource/spectral/500.css";
-// Blue: a grotesk with a heavy, wide italic for names and its text weights for reading, and a
-// technical mono for labels (both with a width axis)
-import "@fontsource-variable/archivo/wdth.css";
-import "@fontsource-variable/archivo/wdth-italic.css";
-import "@fontsource-variable/martian-mono/wdth.css";
+// Blue: one geometric sans for everything (every mark of the transliterations its own)
+import "@fontsource-variable/lexend/wght.css";
 import "@fontsource/courier-prime/400.css";
 import "@fontsource/courier-prime/700.css";
 import "./index.css";

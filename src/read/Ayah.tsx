@@ -1,9 +1,9 @@
-import { memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import { Fragment, memo, useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Bookmark, BookmarkCheck, Copy, Mic, Share2, StickyNote } from "lucide-react";
 import type { Verse } from "@/lib/data";
 import { TRANSLATIONS } from "@/lib/data";
 import type { Highlight, Settings } from "@/lib/store";
-import { arabicSize, arabicWords, inkOf, newestOf, splitPiece, translationPieces, translationSize } from "./text";
+import { arabicSize, arabicWords, inkOf, newestOf, shownPieces, splitPiece, translationPieces, translationSize } from "./text";
 import { phrasesIn, renderTerms } from "./terms";
 import { cn } from "@/lib/utils";
 
@@ -351,7 +351,7 @@ export const AyahSection = memo(function AyahSection({
       {/* the one-ayah view keeps one set of buttons still in the frame's corner (Read); here, halfway
           down the ayah and its translation (below the number, above the bottom padding) */}
       {!one && (
-        <div className={cn("absolute bottom-9 right-[30px] flex items-center md:right-3", showAr ? "top-12 md:top-14" : "top-7 md:top-9")}>{actions}</div>
+        <div data-ayah-tools className={cn("absolute bottom-9 right-[30px] flex items-center md:right-3", showAr ? "top-12 md:top-14" : "top-7 md:top-9")}>{actions}</div>
       )}
     </section>
   );
@@ -413,10 +413,12 @@ function heightsChanged() {
 
 /** A translation's pieces as rendered: bold reading text, the lighter context (when shown), highlights over both. */
 export function renderPieces(tr: ReturnType<typeof translationPieces>, hls: Highlight[], showCtx: boolean) {
-  return tr.pieces
-    .filter((p) => showCtx || p.kind === 0 || tr.source !== "qme")
-    .map((p, pi) =>
-      splitPiece(p, hls).map((part, i) => {
+  // (the context hidden: its bracketed words go, the sentence's own punctuation stays: shownPieces)
+  return (tr.source === "qme" ? shownPieces(tr.pieces, showCtx) : tr.pieces)
+    .map((p, pi) => [
+      // (a space the hidden context left wanting: not the book's, so outside its words)
+      p.pre ? <Fragment key={"pre" + pi}>{p.pre}</Fragment> : null,
+      ...splitPiece(p, hls).map((part, i) => {
         const inner = (
           <span key={pi + "-" + i} className={tr.source === "qme" ? (p.kind === 1 ? "ctx" : "tr-main") : undefined}>
             {wordsOf(part.text, part.start)}
@@ -431,7 +433,7 @@ export function renderPieces(tr: ReturnType<typeof translationPieces>, hls: High
           inner
         );
       }),
-    );
+    ]);
 }
 
 /** Split text into word spans (each keeps its canonical offset) with plain spaces between. */

@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Bookmark, Check, ChevronDown, ChevronLeft, ChevronRight, Copy, Maximize2, Mic, Search, Share2, StickyNote } from "lucide-react";
 import { QuillGlyph } from "@/components/glyphs";
 import { EASE_IN_OUT, EASE_OUT, cn } from "@/lib/utils";
@@ -81,7 +81,118 @@ const STEPS: Step[] = [
   },
 ];
 
+/* ── the keys of a computer (Read.tsx keysNow, Select.tsx): every button's action, listed ── */
+const MAC = typeof navigator !== "undefined" && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+const CMD = MAC ? "⌘" : "Ctrl";
+const KEYS: { group: string; rows: [string, string[][]][] }[] = [
+  {
+    group: "Moving through a surah",
+    rows: [
+      ["Next ayah · previous ayah", [["↓"], ["↑"]]],
+      ["A page at a time", [["Space"], ["PgDn"], ["PgUp"]]],
+      ["The opening page · the closing page", [["Home"], ["End"]]],
+      ["Next surah · previous surah", [["]"], ["["]]],
+      ["The surah index", [["I"]]],
+    ],
+  },
+  {
+    group: "Opening",
+    rows: [
+      ["Search", [["/"]]],
+      ["Saved", [["S"]]],
+      ["Settings", [[","]]],
+      ["Reflect on the surah", [["R"]]],
+      ["The surah's summary (the frame turned over)", [["T"]]],
+      ["These keys", [["?"]]],
+      ["Close, go back", [["Esc"]]],
+    ],
+  },
+  {
+    group: "The way of reading",
+    rows: [
+      ["One ayah · many ayahs", [["V"]]],
+      ["The bracketed context, on or off", [["C"]]],
+      ["Arabic and translation · Arabic · translation", [["M"]]],
+      ["Focus", [["F"]]],
+    ],
+  },
+  {
+    group: "The ayah in the frame",
+    rows: [
+      ["Bookmark it", [["B"]]],
+      ["Write a note", [["N"]]],
+      ["Record a voice note", [["Shift", "N"]]],
+      ["Share it as an image", [["P"]]],
+      ["Copy it", [[CMD, "C"]]],
+    ],
+  },
+  {
+    group: "A highlight (just made, or its menu open)",
+    rows: [
+      ["Copy its words", [[CMD, "C"]]],
+      ["Its colour", [["1"], ["2"], ["3"], ["4"], ["5"]]],
+      ["A note on it · a voice note", [["N"], ["Shift", "N"]]],
+      ["Share it as an image", [["P"]]],
+      ["Remove it", [["Delete"]]],
+    ],
+  },
+  {
+    group: "The cover and the index",
+    rows: [
+      ["Search", [["/"], ["or just type"]]],
+      ["Open (the Qur'an, the surah in front)", [["Enter"]]],
+      ["Turn the surahs", [["←"], ["→"]]],
+      ["Continue where you left off", [["C"]]],
+      ["Settings (the index)", [[","]]],
+    ],
+  },
+];
+
+/** "?" asks for the keys: the guide opens on them */
+let keysWanted = false;
+export const wantKeys = () => {
+  keysWanted = true;
+};
+
+function KeysList() {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!keysWanted) return;
+    keysWanted = false;
+    ref.current?.scrollIntoView({ block: "start" });
+  }, []);
+  return (
+    <div ref={ref} id="guide-keys" className="mt-4 border-t border-[var(--box-line)] pt-7">
+      <h3 className="display font-serif text-[24px] leading-tight italic md:text-[28px]">Keyboard shortcuts</h3>
+      <p className="mt-2 max-w-[52ch] text-[14.5px] leading-relaxed text-[var(--box-muted)]">On a computer, every button has its key. Press ? on the reading page to come back here.</p>
+      <div className="mt-6 grid gap-x-10 gap-y-7 md:grid-cols-2">
+        {KEYS.map((g) => (
+          <div key={g.group}>
+            <div className="label mb-2.5 text-[var(--box-faint)]">{g.group}</div>
+            <div className="flex flex-col">
+              {g.rows.map(([what, keys]) => (
+                <div key={what} className="flex items-center justify-between gap-4 border-b border-[var(--box-line)] py-[7px] last:border-b-0">
+                  <span className="text-[13.5px] text-[var(--box-muted)]">{what}</span>
+                  <span className="flex shrink-0 items-center gap-1.5">
+                    {keys.map((combo, ci) => (
+                      <span key={ci} className="flex items-center gap-0.5">
+                        {combo.map((key) => (key.startsWith("or ") ? <span key={key} className="text-[12px] text-[var(--box-faint)]">{key}</span> : <kbd key={key} className="kbd">{key}</kbd>))}
+                      </span>
+                    ))}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function GuideTab() {
+  // (the keys only where there is a keyboard to press them: a computer, a pointer that hovers)
+  const [keyboard] = useState(() => typeof matchMedia !== "undefined" && matchMedia("(hover: hover) and (pointer: fine)").matches);
   const [i, setI] = useState(0);
   const step = STEPS[i];
   const go = (d: number) => setI((x) => Math.max(0, Math.min(STEPS.length - 1, x + d)));
@@ -140,6 +251,7 @@ export function GuideTab() {
           {i === STEPS.length - 1 ? "From the start" : "Next"} <ChevronRight size={14} />
         </button>
       </div>
+      {keyboard && <KeysList />}
     </div>
   );
 }

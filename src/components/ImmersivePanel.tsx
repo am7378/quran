@@ -55,11 +55,11 @@ export function ImmersivePanel({
       }
     : theme === "blue"
     ? {
-        // a slab of the blue run in from the side, as a second colour is printed over a poster
-        initial: { clipPath: "inset(0 100% 0 0)" },
-        animate: { clipPath: "inset(0 0% 0 0)" },
-        exit: { clipPath: "inset(0 0 0 100%)", transition: { duration: 0.36, ease: EASE_IN_OUT } },
-        transition: { duration: 0.5, ease: EASE_IN_OUT },
+        // a dashboard's drawer: in from the side, settling
+        initial: { opacity: 0, x: 26 },
+        animate: { opacity: 1, x: 0 },
+        exit: { opacity: 0, x: 14, transition: { duration: 0.25, ease: EASE_IN_OUT } },
+        transition: { duration: 0.5, ease: EASE_OUT },
       }
     : theme === "atlas"
     ? {

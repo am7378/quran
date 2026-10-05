@@ -1,4 +1,5 @@
-import type { Translation, Verse } from "@/lib/data";
+import { qmePieces, shownPieces, type Piece, type Translation, type Verse } from "@/lib/data";
+export { shownPieces, type Piece } from "@/lib/data";
 import { HIGHLIGHT_HEX, type Highlight } from "@/lib/store";
 
 /**
@@ -22,22 +23,23 @@ export const newestOf = (hls: Highlight[]) => hls.reduce((a, b) => (b.at > a.at 
  * character offsets into it, so they survive re-renders and the context
  * toggle (hidden pieces keep their offsets).
  */
-export type Piece = { text: string; start: number; kind: 0 | 1 };
-
 export function translationPieces(v: Verse, t: Translation): { canon: string; pieces: Piece[]; source: Translation } {
-  if (t === "qme" && v.q && v.q.length) {
-    let canon = "";
-    const pieces: Piece[] = [];
-    for (const [kind, seg] of v.q) {
-      const sep = canon === "" || /^[,.;:!?’”)]/.test(seg) ? "" : " ";
-      pieces.push({ text: sep + seg, start: canon.length, kind });
-      canon += sep + seg;
-    }
-    return { canon, pieces, source: "qme" };
-  }
+  if (t === "qme" && v.q && v.q.length) return { ...qmePieces(v.q), source: "qme" };
   const source: Translation = t === "clear" ? "clear" : "saheeh";
   const text = source === "clear" ? v.c : v.s;
   return { canon: text, pieces: [{ text, start: 0, kind: 0 }], source };
+}
+
+/** The words between two offsets as they are shown (the context hidden: without its brackets). */
+export function shownSlice(pieces: Piece[], showCtx: boolean, s: number, e: number) {
+  let out = "";
+  for (const p of shownPieces(pieces, showCtx)) {
+    const a = Math.max(s, p.start), b = Math.min(e, p.start + p.text.length);
+    if (b <= a) continue;
+    if (p.pre && out) out += p.pre;
+    out += p.text.slice(a - p.start, b - p.start);
+  }
+  return out.trim();
 }
 
 export type Word = { text: string; start: number; end: number; i: number };

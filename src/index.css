@@ -160,30 +160,11 @@
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
 }
 @font-face {
-  font-family: "Archivo Variable";
+  font-family: "Lexend Variable";
   font-style: normal;
   font-display: swap;
   font-weight: 100 900;
-  font-stretch: 62% 125%;
-  src: url("../node_modules/@fontsource-variable/archivo/files/archivo-latin-ext-wdth-normal.woff2") format("woff2-variations");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
-}
-@font-face {
-  font-family: "Archivo Variable";
-  font-style: italic;
-  font-display: swap;
-  font-weight: 100 900;
-  font-stretch: 62% 125%;
-  src: url("../node_modules/@fontsource-variable/archivo/files/archivo-latin-ext-wdth-italic.woff2") format("woff2-variations");
-  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
-}
-@font-face {
-  font-family: "Martian Mono Variable";
-  font-style: normal;
-  font-display: swap;
-  font-weight: 100 800;
-  font-stretch: 75% 112.5%;
-  src: url("../node_modules/@fontsource-variable/martian-mono/files/martian-mono-latin-ext-wdth-normal.woff2") format("woff2-variations");
+  src: url("../node_modules/@fontsource-variable/lexend/files/lexend-latin-ext-wght-normal.woff2") format("woff2-variations");
   unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF;
 }
 @font-face {
@@ -333,6 +314,26 @@ html.touch .surah-card .grain-local {
   background: rgba(246, 218, 96, 0.42);
   border-radius: 2px;
 }
+/* a key on the keyboard (Settings → Guide): a small cap of its own, in the theme's colours */
+.kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid var(--box-line);
+  border-bottom-width: 2px;
+  border-radius: min(5px, var(--pop-radius, 5px));
+  background: var(--box-hover);
+  color: var(--box-fg);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
 /* a surah name's lowercase ĥ (lib/names.tsx): its circumflex over the middle of the letter, just
    clear of the stem, as a capital's sits (a face's own ĥ perches it on the stem's top, leaning off
    crooked in italics). Placed from the baseline by the face's own measures, in ems (set on .hat) */
@@ -1651,202 +1652,153 @@ mark.hl.fresh {
 }
 
 /* ══ Blue ════════════════════════════════════════════════════════
-   A poster printed in one colour (site UI inspiration: D1, d2, d3): royal blue (#4169E1) as a
-   halftone screen behind everything (components/ui/skies.tsx), the frame a sheet of white paper
-   laid on it, square, with a hard navy shadow and crop marks at its corners. Names in a heavy, wide
-   italic grotesk (Archivo), the way a box logo is lettered: the passage's theme above the frame set
-   in blue on a white block, the cover's name in white on a blue one. The reading in the same
-   grotesk's text weights, its context in blue; labels in a technical mono's small capitals (Martian
-   Mono), as a spec sheet is lettered, and the surah's measure in a row of them above the frame, its
-   number large on its side beside it. Panels a slab of the blue with white type; buttons stamped,
-   with a hard shadow that presses in. */
+   The colours of site UI inspiration/blue.jpg, taken from it: black, the night sky's blues (#050d2e
+   overhead to #0c225c, #011947 at the horizon) and royal blue (#4169E1) for what stands out; laid
+   out the way d5 lays out its dashboard. Behind everything that night, its mountains drawn as a
+   laser scan draws them, a cloud of points under a beam that passes slowly (components/ui/skies.tsx).
+   The frame a pane of dark glass over it, a little rounded; the panels light, as d5's side panel
+   is; one geometric sans throughout (Lexend: every mark of the transliterations its own, drawn by
+   the face), names light and large, labels small in sentence case; royal blue for the button to
+   press, the slider's meter of ticks, the context. No italics: Lexend has none, and none is faked. */
 :root[data-theme="blue"] {
-  --font-serif: "Archivo Variable", "Marks Sans", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Archivo Variable", "Marks Sans", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-  --font-mono: "Martian Mono Variable", "Marks Sans", "Geist Mono Variable", ui-monospace, monospace;
-  --read-scale: 0.95;
-  --tr-main: 620;
+  --font-serif: "Lexend Variable", "Marks Sans", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Lexend Variable", "Marks Sans", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Lexend Variable", "Marks Sans", "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --read-scale: 0.93;
+  --tr-main: 500;
   --color-gold: #4169e1;
-  --color-gold-soft: #6f8ef0;
-  --box-bg: #f3f2ee;
-  --box-bg-solid: #f3f2ee;
-  --box-fg: #0e1014;
-  --box-muted: rgba(14, 16, 20, 0.68);
-  --box-faint: rgba(14, 16, 20, 0.5);
-  --box-line: rgba(14, 16, 20, 0.14);
-  --box-hover: rgba(65, 105, 225, 0.09);
-  --box-frame: #0e1014;
+  --color-gold-soft: #7d9bf7;
+  --box-bg: rgba(5, 9, 26, 0.8);
+  --box-bg-solid: #070b1c;
+  --box-fg: #e9ecf5;
+  --box-muted: rgba(233, 236, 245, 0.68);
+  --box-faint: rgba(233, 236, 245, 0.46);
+  --box-line: rgba(233, 236, 245, 0.1);
+  --box-hover: rgba(233, 236, 245, 0.06);
+  --box-frame: rgba(233, 236, 245, 0.13);
+  --box-accent: #5b7ff0;
+  --box-context: #7a96f2;
+  --panel-bg: #f1f0ed;
+  --tip-bg: #f1f0ed;
+  --tip-fg: #141518;
+  --box-radius: 8px;
+  --box-border: 1px;
+  --box-shadow: 0 50px 120px -36px rgba(0, 0, 0, 0.95), 0 16px 36px -18px rgba(0, 0, 0, 0.75);
+  --pop-radius: 6px;
+  --sky: #050d2e;
+  --strip: #000000;
+  --voice-paper: linear-gradient(160deg, #f6f5f2 0%, #ebeae6 60%, #dfded9 100%);
+  --outside-fg: #e9ecf5;
+  --outside-muted: rgba(233, 236, 245, 0.72);
+  --outside-faint: rgba(233, 236, 245, 0.5);
+  --outside-line: rgba(233, 236, 245, 0.18);
+  --outside-tab: rgba(233, 236, 245, 0.6);
+  --outside-bg: #050d2e;
+  --edge-shade: rgba(0, 0, 0, 0.7);
+  /* the surahs' art in the night's blue: in greys, then given royal blue's hue (below) */
+  --art-tone: grayscale(1) brightness(0.78) contrast(1.15);
+}
+/* the panels (Settings, Saved, About…): light, as d5's side panel, royal blue where it is chosen */
+:root[data-theme="blue"] .dark-scope {
+  --box-bg-solid: #f7f6f3;
+  --box-fg: #141518;
+  --box-muted: rgba(20, 21, 24, 0.66);
+  --box-faint: rgba(20, 21, 24, 0.46);
+  --box-line: rgba(20, 21, 24, 0.1);
+  --box-hover: rgba(20, 21, 24, 0.05);
   --box-accent: #4169e1;
   --box-context: #3459d0;
-  --panel-bg: #4169e1;
-  --tip-bg: #4169e1;
-  --tip-fg: #ffffff;
-  --box-radius: 0px;
-  --box-border: 1.5px;
-  --box-shadow: 12px 12px 0 #0f1f5c;
-  --pop-radius: 0px;
-  --sky: #4169e1;
-  --voice-paper: linear-gradient(160deg, #f7f6f2 0%, #ecebe5 60%, #e0ded7 100%);
-  --outside-fg: #ffffff;
-  --outside-muted: rgba(255, 255, 255, 0.86);
-  --outside-faint: rgba(255, 255, 255, 0.66);
-  --outside-line: rgba(255, 255, 255, 0.42);
-  --outside-tab: rgba(255, 255, 255, 0.75);
-  --outside-bg: #4169e1;
-  --edge-shade: rgba(12, 28, 96, 0.28);
-  /* the surahs' art, printed in the blue: in greys, then given its hue (SurahCard, below) */
-  --art-tone: grayscale(1) brightness(0.92) contrast(1.12);
+  --color-gold: #4169e1;
 }
-@media (max-width: 767px) {
-  :root[data-theme="blue"] {
-    --box-shadow: 7px 7px 0 #0f1f5c;
-  }
+/* no italics: Lexend has none (the bracketed context is lighter and blue instead) */
+:root[data-theme="blue"] .italic,
+:root[data-theme="blue"] .ctx {
+  font-style: normal;
 }
-/* the panels (Settings, Saved, About…): a slab of the blue, white type on it */
-:root[data-theme="blue"] .dark-scope {
-  --box-bg-solid: #3a5fd8;
-  --box-fg: #ffffff;
-  --box-muted: rgba(255, 255, 255, 0.88);
-  --box-faint: rgba(255, 255, 255, 0.7);
-  --box-line: rgba(255, 255, 255, 0.3);
-  --box-hover: rgba(255, 255, 255, 0.12);
-  --box-accent: #ffffff;
-  --box-context: rgba(255, 255, 255, 0.8);
-  --color-gold: #ffffff;
+:root[data-theme="blue"] .ctx {
+  font-weight: 300;
 }
-/* crop marks at the frame's corners, as on a proof (d3) */
-:root[data-theme="blue"] .frame-box::before {
-  content: "";
-  position: absolute;
-  inset: -20px;
-  pointer-events: none;
-  --c: rgba(255, 255, 255, 0.92);
-  --l: 13px;
-  --w: 1.5px;
-  background:
-    linear-gradient(var(--c), var(--c)) left top / var(--l) var(--w),
-    linear-gradient(var(--c), var(--c)) left top / var(--w) var(--l),
-    linear-gradient(var(--c), var(--c)) right top / var(--l) var(--w),
-    linear-gradient(var(--c), var(--c)) right top / var(--w) var(--l),
-    linear-gradient(var(--c), var(--c)) left bottom / var(--l) var(--w),
-    linear-gradient(var(--c), var(--c)) left bottom / var(--w) var(--l),
-    linear-gradient(var(--c), var(--c)) right bottom / var(--l) var(--w),
-    linear-gradient(var(--c), var(--c)) right bottom / var(--w) var(--l);
-  background-repeat: no-repeat;
-}
-@media (max-width: 767px) {
-  :root[data-theme="blue"] .frame-box::before {
-    inset: -8px;
-    --l: 8px;
-  }
-}
-/* the Arabic in the ink; the cover's in the blue */
+/* the Arabic in white; the cover's in the royal blue of the picture's title */
 :root[data-theme="blue"] .quran {
-  color: #0e1014;
+  color: #eef1f8;
 }
 :root[data-theme="blue"] .cover-page .font-kufi {
   color: #4169e1;
 }
-/* names: heavy and wide, leaning hard, as a box logo is lettered */
+/* names light and large, as d5's title and its figures */
 :root[data-theme="blue"] .display {
-  font-style: italic;
-  font-weight: 800;
-  font-stretch: 112%;
+  font-weight: 300;
   letter-spacing: -0.02em;
-  line-height: 1.02;
+  line-height: 1.06;
 }
 :root[data-theme="blue"] .display.tabular-nums {
   letter-spacing: 0;
 }
-/* the cover's name: white on a block of the blue */
-:root[data-theme="blue"] .cover-name {
-  padding: 0.16em 0.42em 0.12em;
-  background: #4169e1;
-  color: #ffffff;
-  box-shadow: 5px 5px 0 #0e1014;
-}
-/* the passage's theme above the frame: blue on a white block */
-:root[data-theme="blue"] .theme-tag.display {
-  width: fit-content;
-  max-width: 100%;
-  padding: 0.12em 0.4em 0.08em;
-  background: #ffffff;
-  color: #4169e1;
-}
-/* the reading: the same grotesk's text weights; its context lighter, in italics, in blue */
 :root[data-theme="blue"] .font-serif {
-  font-stretch: 100%;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.006em;
 }
-/* labels: a technical mono's small capitals */
+/* labels: small, in sentence case */
 :root[data-theme="blue"] .label {
-  font-size: 9.5px;
-  font-weight: 500;
-  font-stretch: 87.5%;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
+  font-size: 11.5px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
 }
 :root[data-theme="blue"] .label-sm {
-  font-size: 8.5px;
-  font-weight: 500;
-  font-stretch: 87.5%;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: 10.5px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
 }
-/* what to press: stamped in the blue, a hard shadow under it that the press pushes in */
+/* what to press: royal blue, a little rounded */
 :root[data-theme="blue"] .btn-primary {
-  border: 1.5px solid #0e1014;
-  border-radius: 0;
+  border: 1px solid #4169e1;
+  border-radius: 6px;
   background: #4169e1;
   color: #ffffff;
-  box-shadow: 4px 4px 0 #0e1014;
-  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 :root[data-theme="blue"] .btn-primary:hover {
-  background: #3459d0;
+  border-color: #5a7eef;
+  background: #5a7eef;
   color: #ffffff;
-  transform: translate(-1px, -1px);
-  box-shadow: 5px 5px 0 #0e1014;
-}
-:root[data-theme="blue"] .btn-primary:active {
-  transform: translate(3px, 3px);
-  box-shadow: 1px 1px 0 #0e1014;
-}
-:root[data-theme="blue"] .dark-scope .btn-primary {
-  border-color: #ffffff;
-  background: #ffffff;
-  color: #4169e1;
-  box-shadow: 4px 4px 0 #0f1f5c;
 }
 :root[data-theme="blue"] .btn-secondary {
-  border-color: rgba(14, 16, 20, 0.5);
-  border-radius: 0;
+  border-color: var(--box-line);
+  border-radius: 6px;
+  background: var(--box-hover);
 }
 :root[data-theme="blue"] .pill,
-:root[data-theme="blue"] .pill .pill,
+:root[data-theme="blue"] .pill .pill {
+  border-radius: 6px;
+}
 :root[data-theme="blue"] .theme-pop,
 :root[data-theme="blue"] .theme-dialog,
 :root[data-theme="blue"] .surah-card {
-  border-radius: 0;
-}
-:root[data-theme="blue"] .theme-pop {
-  border: 1.5px solid #0e1014;
-  box-shadow: 6px 6px 0 #0f1f5c;
+  border-radius: 8px;
 }
 :root[data-theme="blue"] .search-input {
-  border: 1.5px solid #0e1014;
-  border-radius: 0;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-stretch: 87.5%;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
+  border: 1px solid var(--box-line);
+  border-radius: 6px;
+  background: var(--box-hover);
+  font-family: var(--font-sans);
+  letter-spacing: 0;
+  text-transform: none;
 }
 :root[data-theme="blue"] .search-input:focus {
   border-color: #4169e1;
-  box-shadow: 3px 3px 0 #4169e1;
+  box-shadow: 0 0 0 3px rgba(65, 105, 225, 0.22);
 }
-/* the surahs' cards: their art in the blue, their names heavy and leaning */
+/* the slider: a meter of ticks, as d5's, filled in royal blue */
+:root[data-theme="blue"] .slider-track {
+  height: 10px !important;
+  top: calc(50% - 5px) !important;
+  background: repeating-linear-gradient(90deg, rgba(233, 236, 245, 0.24) 0 1.5px, transparent 1.5px 5px);
+}
+:root[data-theme="blue"] .slider-fill {
+  background: repeating-linear-gradient(90deg, #4169e1 0 1.5px, transparent 1.5px 5px);
+}
+/* the surahs' cards: their art in the night's blue */
 :root[data-theme="blue"] .surah-art {
   isolation: isolate;
 }
@@ -1854,62 +1806,35 @@ mark.hl.fresh {
   content: "";
   position: absolute;
   inset: 0;
-  background: #3a62e0;
+  background: #2f55d4;
   mix-blend-mode: color;
   pointer-events: none;
 }
 :root[data-theme="blue"] .surah-card .font-kufi {
-  text-shadow: 0 0 1.4em rgba(20, 40, 140, 0.7) !important;
-}
-:root[data-theme="blue"] .surah-card .font-serif {
-  font-weight: 800;
-  font-stretch: 112%;
-  letter-spacing: -0.02em;
+  text-shadow: 0 0 1.4em rgba(5, 13, 46, 0.8) !important;
 }
 :root[data-theme="blue"] .grain-local {
-  opacity: 0.05;
+  display: none;
+}
+:root[data-theme="blue"] .grain {
+  opacity: 0.03;
 }
 :root[data-theme="blue"] ::selection {
-  background: rgba(65, 105, 225, 0.28);
-}
-:root[data-theme="blue"] .dark-scope ::selection {
-  background: rgba(255, 255, 255, 0.3);
+  background: rgba(65, 105, 225, 0.4);
 }
 :root[data-theme="blue"] svg.lucide {
-  stroke-width: 1.6px;
+  stroke-width: 1.5px;
 }
-/* the measure of the Qur'an or the surah (cover, reader): a row of mono capitals across, in white */
+/* the measure of the Qur'an or of the surah (cover, reader), in a row across, as d5's figures */
 .spec-row {
   display: flex;
   justify-content: space-between;
   gap: 18px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  font-stretch: 87.5%;
-  letter-spacing: 0.08em;
+  font-family: var(--font-sans);
+  font-size: 11.5px;
   line-height: 1;
-  text-transform: uppercase;
   white-space: nowrap;
   color: var(--outside-muted);
-}
-/* the surah's number, large, on its side beside the frame's foot (as d2's "100") */
-.blue-num {
-  font-family: var(--font-display);
-  font-size: 92px;
-  font-style: italic;
-  font-weight: 900;
-  font-stretch: 125%;
-  line-height: 0.8;
-  letter-spacing: -0.04em;
-  color: #ffffff;
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-}
-@media (max-width: 1199px) {
-  .blue-num {
-    display: none;
-  }
 }
 
 /* ── opened from the home screen (html.standalone): the page runs under the status bar, nothing
@@ -1943,7 +1868,7 @@ html.ios-short body {
   --strip: #03060a;
 }
 :root[data-theme="blue"] {
-  --strip: #3d63da;
+  --strip: #000000;
 }
 :root[data-theme="mono"][data-sky="light"] {
   --strip: #dcd8d2;
