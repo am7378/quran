@@ -78,8 +78,8 @@ type Props = {
 // the King Fahd Complex (QPC) Hafs text of 1:1
 const BISMILLAH = "بِسۡمِ ٱللَّهِ ٱلرَّحۡمَٰنِ ٱلرَّحِيمِ";
 
-/** Safari (a Mac, an iPad with a trackpad): its wheel snaps are chosen before the page can change them */
-const SAFARI = typeof navigator !== "undefined" && /^((?!chrome|chromium|android|crios|fxios|edg).)*safari/i.test(navigator.userAgent);
+/** Safari's engine (a Mac, an iPad with a trackpad): it hands a long ayah's wheel on to the page mid-turn */
+const WEBKIT = typeof navigator !== "undefined" && /AppleWebKit/.test(navigator.userAgent) && !/Chrome|Chromium|Edg/.test(navigator.userAgent);
 
 export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
   const settings = useStore((s) => s.settings);
@@ -233,6 +233,8 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
   const anchorNow = useRef<() => void>(() => {});
   // (and told to follow a glide the page makes, for as long as it lasts)
   const anchorFollow = useRef<(ms: number) => void>(() => {});
+  // an ayah the page is taking the reader to (a jump, the slider): arrived at from its beginning
+  const aimedAt = useRef<{ n: number; until: number } | null>(null);
 
   /* ── scroll to a pending target once the surah is rendered ──── */
   const scrollToAyah = useCallback((ayah: number, smooth = true) => {
@@ -240,6 +242,9 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     if (!sc) return;
     const el = sc.querySelector<HTMLElement>(`[data-n="${ayah}"]`);
     if (!el) return;
+    // (a long ayah of the one-ayah view, which scrolls within itself, from its beginning)
+    aimedAt.current = { n: ayah, until: performance.now() + 2600 };
+    if (el.scrollTop) el.scrollTop = 0;
     const topOf = () => {
       let top = el.offsetTop;
       // scrolling freely, the last ayahs rest with the surah's end at the foot of the box (any
@@ -497,9 +502,10 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
         setTip(null);
       });
     };
-    sc.addEventListener("scroll", onScroll, { passive: true });
+    // (heard as well when a long ayah scrolls within itself: its word's tip goes)
+    sc.addEventListener("scroll", onScroll, { passive: true, capture: true });
     return () => {
-      sc.removeEventListener("scroll", onScroll);
+      sc.removeEventListener("scroll", onScroll, { capture: true });
       cancelAnimationFrame(raf);
     };
   }, [data]);
@@ -569,9 +575,8 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     // taken up as the place, adding up until the reader is on another ayah
     let placing = false;
     let theirs = 0;
-    let mine = 0; // (the reader's own hand only: a glide the page starts never counts)
     let held = false; // (a finger or a button down: all the scrolling is theirs, an edge's autoscroll too)
-    const touched = () => (theirs = mine = performance.now() + 1200);
+    const touched = () => (theirs = performance.now() + 1200);
     const press = () => ((held = true), touched());
     // (a press let go: the glide after it is theirs, if the press was on the page: a release elsewhere,
     // after the slider say, is not)
@@ -581,90 +586,47 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       touched();
     };
 
-    /* a long ayah (taller than the frame) is read like a page: inside it the scrolling is the
-       reader's own, the snapping let go (Safari would only ever rest on its top or its end), and it
-       is taken up again at either edge, so the next swipe past it snaps on to the ayah before or
-       after. A flick that carries past an edge stops there: a long ayah's end is read before the
-       next one comes. */
-    let free: HTMLElement | null = null;
-    let release = 0;
-    // a flick stopped at a long ayah's edge: the rest of that same flick (a trackpad's glide) is held
-    // there, and only a new one goes on
-    let stopUntil = 0, stopDir = 0;
-    const stopped = (dir: number) => ((stopUntil = performance.now() + 260), (stopDir = dir));
-    const loose = (on: boolean) => sc.classList.toggle("free", on);
-    // the ayah at the frame's top, if it is taller than the frame: its top (a) and where its end
-    // meets the frame's foot (b)
-    const longAt = (top: number) => {
-      let cur: HTMLElement | null = null;
-      for (const el of items()) {
-        if (el.offsetTop <= top + 1) cur = el;
+    /* a long ayah (taller than the frame) scrolls within itself (Ayah.tsx): read with the phone's own
+       scrolling, it stops at its end, and only a new swipe from there goes on to the next ayah. The
+       ones either side wait at their near end: the one before at its end (coming back up, the
+       reading carries on from where it was left), the one after at its beginning. One the page is
+       taking the reader to (a jump, the slider) is left at its beginning. */
+    const ends = () => {
+      const top = sc.scrollTop, h = sc.clientHeight;
+      const list = items();
+      let i = -1;
+      for (let k = 0; k < list.length; k++) {
+        if (list[k].offsetTop <= top + 1) i = k;
         else break;
       }
-      if (!cur || cur.offsetHeight <= sc.clientHeight + 2) return null;
-      return { el: cur, a: cur.offsetTop, b: cur.offsetTop + cur.offsetHeight - sc.clientHeight };
+      const aim = aimedAt.current && performance.now() < aimedAt.current.until ? aimedAt.current.n : null;
+      const prev = list[i - 1], next = list[i + 1];
+      if (prev && Number(prev.dataset.n) !== aim && prev.offsetTop + prev.offsetHeight <= top + 1 && prev.scrollHeight > prev.clientHeight + 1)
+        prev.scrollTop = prev.scrollHeight;
+      if (next && Number(next.dataset.n) !== aim && next.offsetTop >= top + h - 1 && next.scrollTop) next.scrollTop = 0;
     };
-    const letGo = (el: HTMLElement) => {
-      free = el;
-      window.clearTimeout(release);
-      release = 0;
-      loose(true);
-    };
-    const reading = () => {
-      const top = sc.scrollTop, h = sc.clientHeight;
-      const hand = held || performance.now() < mine;
-      if (free) {
-        const a = free.offsetTop, b = a + free.offsetHeight - h;
-        if (free.isConnected && top > a + 1 && top < b - 1) return;
-        free = null;
-        if (!hand) {
-          // the page moving itself (a jump, the slider): snapping again once it comes to rest
-          window.clearTimeout(release);
-          release = window.setTimeout(() => !free && loose(false), 180);
-          return;
-        }
-        if (!held && (top > b || top < a)) {
-          placing = true;
-          stopped(top > b ? 1 : -1);
-          sc.scrollTop = top > b ? b : a;
-          note();
-          requestAnimationFrame(() => (placing = false));
-        }
-        loose(false);
-        return;
-      }
-      if (release && sc.classList.contains("free")) {
-        window.clearTimeout(release);
-        release = window.setTimeout(() => !free && loose(false), 180);
-      }
-      if (!hand) return;
-      const L = longAt(top);
-      if (L && top > L.a + 1 && top < L.b - 1) letGo(L.el);
-    };
-    // the wheel says which way before anything moves: heading into a long ayah (from its top, its
-    // end, or inside it), the snapping is let go first. Safari picks a wheel's snap before the page
-    // can let it go, so there the long ayah is scrolled here, held between its top and its end
+
+    // the wheel the same, on Safari (a Mac, an iPad with a trackpad): a long ayah's end (or top)
+    // reached in the middle of a turn of the wheel or a trackpad's glide holds it there; a new turn,
+    // after a pause, goes on. (Chrome holds a turn to the ayah it began in by itself; stopping its
+    // wheel would keep the next turn there too.)
+    let lastWheel = 0;
+    let startedAt: HTMLElement | null = null; // a long ayah the turn began at the edge of: it may go on
     const onWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || !e.deltaY) return;
-      if (Math.sign(e.deltaY) === stopDir && performance.now() < stopUntil) {
-        e.preventDefault();
-        stopped(stopDir);
-        return;
-      }
-      const top = sc.scrollTop;
-      const L = free ? { el: free, a: free.offsetTop, b: free.offsetTop + free.offsetHeight - sc.clientHeight } : longAt(top);
-      if (!L || !(e.deltaY > 0 ? top >= L.a - 1 && top < L.b - 1 : top > L.a + 1 && top <= L.b + 1)) return;
-      if (!free) letGo(L.el);
-      if (!SAFARI) return;
-      e.preventDefault();
-      const d = e.deltaY * (e.deltaMode === 1 ? 40 : e.deltaMode === 2 ? sc.clientHeight : 1);
-      if (top + d > L.b || top + d < L.a) stopped(Math.sign(d));
-      sc.scrollTop = Math.max(L.a, Math.min(L.b, top + d));
+      const now = performance.now();
+      const fresh = now - lastWheel > 260;
+      lastWheel = now;
+      const page = (e.target as HTMLElement | null)?.closest?.<HTMLElement>(".ayah-page");
+      const long = !!page && page.scrollHeight > page.clientHeight + 1;
+      const room = long ? page!.scrollHeight - page!.clientHeight : 0;
+      const atEdge = long && !!e.deltaY && (e.deltaY > 0 ? page!.scrollTop >= room - 1 : page!.scrollTop <= 1);
+      if (fresh) startedAt = atEdge ? page : null;
+      if (atEdge && page !== startedAt) e.preventDefault();
     };
-    sc.addEventListener("wheel", onWheel); // (not passive: it is heard before the page scrolls)
+    if (WEBKIT) sc.addEventListener("wheel", onWheel); // (not passive: it may stop the wheel)
 
     const onScroll = () => {
-      reading();
+      ends();
       if (placing || (!held && performance.now() > theirs)) return;
       theirs = Math.max(theirs, performance.now() + 250); // (a glide carrying on)
       note();
@@ -677,10 +639,8 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     window.addEventListener("pointercancel", lift, { passive: true });
     window.addEventListener("touchend", lift, { passive: true });
     window.addEventListener("touchcancel", lift, { passive: true });
-    // (a jump or a glide the page makes is never the reader's hand, however recently it scrolled:
-    // it is not stopped at a long ayah's edge)
-    anchorNow.current = () => ((mine = 0), note());
-    anchorFollow.current = (ms) => ((mine = 0), (theirs = Math.max(theirs, performance.now() + ms)));
+    anchorNow.current = note;
+    anchorFollow.current = (ms) => (theirs = Math.max(theirs, performance.now() + ms));
     const place = () => {
       const a = anchor;
       if (!a || !a.el.isConnected) return;
@@ -696,13 +656,12 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       requestAnimationFrame(() => (placing = false));
     };
     const ro = new ResizeObserver(place);
-    const offHeights = onAyahHeights(place);
+    const offHeights = onAyahHeights(() => (place(), ends()));
     sc.querySelectorAll("section[data-key]").forEach((s) => ro.observe(s));
     note();
+    ends();
     sc.addEventListener("scroll", onScroll, { passive: true });
     return () => {
-      window.clearTimeout(release);
-      loose(false);
       sc.removeEventListener("wheel", onWheel);
       anchorNow.current = () => {};
       anchorFollow.current = () => {};
@@ -1436,6 +1395,16 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       if (document.activeElement === scroller.current || t?.closest?.("[role=slider]")) return;
       take();
       const dir = k === "ArrowUp" || k === "PageUp" ? -1 : 1;
+      // one ayah at a time, a long one is read through first: the keys move within it, a page (or,
+      // for the arrows, half of one) at a time, and on to the next ayah from its end
+      const page = settings.view === 1 ? scroller.current?.querySelector<HTMLElement>(`[data-n="${activeRef.current}"]`) : null;
+      if (page && page.scrollHeight > page.clientHeight + 1) {
+        const room = page.scrollHeight - page.clientHeight;
+        if (dir > 0 ? page.scrollTop < room - 1 : page.scrollTop > 1) {
+          const step = page.clientHeight * (k === "ArrowDown" || k === "ArrowUp" ? 0.45 : 0.85);
+          return page.scrollBy({ top: dir * step, behavior: settings.reduceMotion ? "auto" : "smooth" });
+        }
+      }
       return scrollToAyah(Math.max(0, Math.min(surah.count, activeRef.current + dir)));
     }
     if (k === "Home") return take(), scrollToAyah(0);

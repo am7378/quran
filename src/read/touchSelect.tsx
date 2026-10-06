@@ -221,8 +221,11 @@ export function useTouchSelect({
         follow();
         window.clearInterval(scrolling);
         scrolling = 0;
-        const sc = scroller.current;
-        if (sc && free.current) {
+        // what scrolls under the selection near an edge: the page, scrolling freely, or one long ayah
+        // scrolling within itself
+        const own = field.closest<HTMLElement>(".ayah-page");
+        const sc = free.current ? scroller.current : own && own.scrollHeight > own.clientHeight + 1 ? own : null;
+        if (sc) {
           const r = sc.getBoundingClientRect();
           const dir = py < r.top + 56 ? -1 : py > r.bottom - 56 ? 1 : 0;
           if (dir)

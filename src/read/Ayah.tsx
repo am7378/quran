@@ -108,7 +108,7 @@ export const AyahSection = memo(function AyahSection({
     if (skipped) el.style.contentVisibility = "visible";
     // (without the end mark, which is there only because it is long)
     const mark = el.querySelector<HTMLElement>("[data-end-mark]");
-    const h = el.offsetHeight - (mark ? mark.offsetHeight + 36 : 0);
+    const h = el.scrollHeight - (mark ? mark.offsetHeight + 36 : 0); // (all of it, scrolled within or not)
     if (skipped) el.style.contentVisibility = "";
     const room = el.closest<HTMLElement>(".snap-scroller")?.clientHeight || viewH;
     const o = h > room + 1;
@@ -122,7 +122,7 @@ export const AyahSection = memo(function AyahSection({
      the reader comes near it (whenNear), so nothing above the reader moves when
      the switch is pressed, and no work is spent on ayahs never reached. ── */
   const [ctxShown, setCtxShown] = useState(settings.showContext);
-  const pending = useRef<{ from: number; above: boolean; ghost?: HTMLElement; top?: number } | null>(null);
+  const pending = useRef<{ from: number; above: boolean; ghost?: HTMLElement; top?: number; frac?: number } | null>(null);
   const glide = useRef<Animation | null>(null);
   const want = useRef(settings.showContext);
   want.current = settings.showContext;
@@ -165,7 +165,9 @@ export const AyahSection = memo(function AyahSection({
     box.style.position = "relative";
     box.appendChild(g);
     const inner = sec.querySelector<HTMLElement>("[data-inner]");
-    pending.current = { from: sec.offsetHeight, above: false, ghost: g, top: inner?.getBoundingClientRect().top };
+    // (a long ayah read partway down within itself: as far into it after, in proportion)
+    const room = sec.scrollHeight - sec.clientHeight;
+    pending.current = { from: sec.offsetHeight, above: false, ghost: g, top: inner?.getBoundingClientRect().top, frac: room > 1 && sec.scrollTop > 1 ? sec.scrollTop / room : undefined };
     setCtxShown(settings.showContext);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [settings.showContext]);
@@ -191,7 +193,15 @@ export const AyahSection = memo(function AyahSection({
     }
     // the ayah starts where it was and glides to where it now sits
     const inner = sec.querySelector<HTMLElement>("[data-inner]");
-    const dy = P.top != null && inner ? P.top - inner.getBoundingClientRect().top : 0;
+    // read partway down a long ayah: the same part of it kept in view, the words simply crossfading
+    if (P.frac != null) {
+      // (its length as it now is: without the old words still fading over it)
+      ghost.style.display = "none";
+      const room = Math.max(0, sec.scrollHeight - sec.clientHeight);
+      ghost.style.display = "";
+      sec.scrollTop = Math.round(P.frac * room);
+    }
+    const dy = P.top != null && inner && P.frac == null ? P.top - inner.getBoundingClientRect().top : 0;
     glide.current?.cancel();
     glide.current = inner && Math.abs(dy) > 0.5 ? inner.animate([{ transform: `translateY(${dy}px)` }, { transform: "none" }], { duration: 560, easing: EASE }) : null;
     const out = ghost.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 200, easing: "cubic-bezier(0.4, 0, 1, 1)", fill: "forwards" });
@@ -319,17 +329,18 @@ export const AyahSection = memo(function AyahSection({
       className={cn(
         "snap-item cv relative flex flex-col",
         one
-          ? "min-h-full justify-center pl-[max(7%,34px)] pr-[max(7%,66px)] md:pl-[9%] md:pr-[max(9%,64px)]"
+          ? "ayah-page h-full pl-[max(7%,34px)] pr-[max(7%,66px)] md:pl-[9%] md:pr-[max(9%,64px)]"
           : cn(
               "justify-center border-b border-[var(--box-line)] pb-9 pl-[max(6%,34px)] pr-[max(calc(6%+44px),66px)] pt-7 md:pl-[6%] md:pr-[calc(6%+44px)] md:pt-9",
               // never shorter than its column of buttons (five, 168px) with the column's insets
               showAr ? "min-h-[252px] md:min-h-[260px]" : "min-h-[232px] md:min-h-[240px]",
             ),
       )}
-      style={{ paddingBlock: one ? "6%" : undefined, containIntrinsicSize: `auto ${hold}px` }}
+      style={{ paddingTop: one ? "6%" : undefined, containIntrinsicSize: `auto ${hold}px` }}
       aria-label={`Ayah ${key}`}
     >
-      <div data-inner>
+      {/* (one ayah at a time: in the middle of its page, or from the top when it is longer than it) */}
+      <div data-inner className={one ? "my-auto shrink-0" : undefined}>
         {number}
         {arabic}
         {divider}
@@ -343,9 +354,8 @@ export const AyahSection = memo(function AyahSection({
           </div>
         )}
       </div>
-      {/* one ayah at a time: the scrolling stops where the ayah ends (a long one is read down to its
-          end, and only a further swipe takes the reader on to the next) */}
-      {one && <span className="ayah-end-stop" aria-hidden />}
+      {/* (the page's foot, as its head: kept below the last line when a long ayah is scrolled to its end) */}
+      {one && <div aria-hidden className="shrink-0" style={{ paddingTop: "6%" }} />}
       {/* the one-ayah view keeps one set of buttons still in the frame's corner (Read); here, halfway
           down the ayah and its translation (below the number, above the bottom padding) */}
       {!one && (

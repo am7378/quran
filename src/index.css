@@ -534,10 +534,18 @@ html.touch .grain-local {
 .snap-scroller::-webkit-scrollbar {
   display: none;
 }
-/* inside an ayah taller than the frame, the reader scrolls it freely; the snapping is taken up again
-   at its top and its end (Read.tsx) */
-.snap-scroller.free {
-  scroll-snap-type: none;
+/* one ayah at a time: each ayah is a page the frame's height. One too long for it scrolls within
+   itself, with the phone's own scrolling: a flick stops at its end, and only a new swipe from there
+   goes on, the page snapping to the next ayah (Ayah.tsx, Read.tsx) */
+.ayah-page {
+  overflow-y: auto;
+  overscroll-behavior-y: auto;
+  touch-action: pan-y;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+.ayah-page::-webkit-scrollbar {
+  display: none;
 }
 .snap-item {
   scroll-snap-align: start;
