@@ -162,7 +162,7 @@ export function CoverSearch({
 }
 
 /** The cover's search at rest: a quiet field in the frame's foot. */
-export function CoverSearchField({ onOpen, hidden }: { onOpen: () => void; hidden: boolean }) {
+export function CoverSearchField({ onOpen, hidden, short, className }: { onOpen: () => void; hidden: boolean; short?: boolean; className?: string }) {
   return (
     <button
       type="button"
@@ -170,12 +170,13 @@ export function CoverSearchField({ onOpen, hidden }: { onOpen: () => void; hidde
       tabIndex={hidden ? -1 : 0}
       aria-label="Search"
       className={cn(
-        "group flex h-full w-full items-center justify-center gap-2 text-[var(--box-faint)] transition-[color,opacity] duration-300 hover:text-[var(--box-fg)]",
+        "group flex h-full w-full min-w-0 items-center justify-center gap-2 text-[var(--box-faint)] transition-[color,opacity] duration-300 hover:text-[var(--box-fg)]",
         hidden && "pointer-events-none opacity-0",
+        className,
       )}
     >
       <Search size={12.5} strokeWidth={1.7} className="shrink-0 transition-transform duration-300 group-hover:scale-110" />
-      <span className="label-sm whitespace-nowrap">Search a surah, an ayah, a word</span>
+      <span className="label-sm whitespace-nowrap">{short ? "Search" : "Search a surah, an ayah, a word"}</span>
     </button>
   );
 }

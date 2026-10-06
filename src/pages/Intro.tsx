@@ -7,6 +7,8 @@ import { SettingsGlyph } from "@/components/ImmersivePanel";
 import type { Surah } from "@/lib/data";
 import type { Result } from "@/lib/search";
 import { useUI } from "@/lib/ui";
+import { useStore } from "@/lib/store";
+import { ayn } from "@/lib/names";
 import { EASE_OUT, cn } from "@/lib/utils";
 
 /**
@@ -25,6 +27,7 @@ export function Intro({
   searching,
   onSearching,
   onPick,
+  onContinue,
 }: {
   onEnter: () => void;
   onSettings: () => void;
@@ -34,7 +37,12 @@ export function Intro({
   searching: boolean;
   onSearching: (on: boolean) => void;
   onPick: (r: Result) => void;
+  onContinue: (surah: number, ayah: number) => void; // straight back to where the reader left off
 }) {
+  // where the reading stopped last time (not the very start of the Qur'an, which is no place to come back to)
+  const last = useStore((s) => s.last);
+  const resume = last && !(last.s === 1 && last.v <= 1) ? last : null;
+  const resumeName = resume ? index?.surahs[resume.s - 1]?.tc : undefined;
   const started = useRef(false);
   const go = () => {
     if (started.current) return;
@@ -147,12 +155,32 @@ export function Intro({
 
       {/* footer, as on the reading page: the search, at rest */}
       <motion.footer
-        className="frame-foot relative z-10 flex h-10 shrink-0 items-center justify-center border-t border-[var(--box-line)] px-5 md:h-11 md:px-7"
+        className="frame-foot relative z-10 flex h-10 shrink-0 items-stretch justify-center border-t border-[var(--box-line)] px-5 md:h-11 md:px-7"
         initial={{ opacity: 0 }}
         animate={{ opacity: searching ? 0 : 1 }}
         transition={searching ? { duration: 0.25 } : { duration: 0.6, delay: 0.2 }}
       >
-        <CoverSearchField onOpen={openSearch} hidden={searching} />
+        <CoverSearchField onOpen={openSearch} hidden={searching} short={!!resume && mobile} className="flex-1" />
+        {/* and, when there is a place to go back to, Continue: the foot split by a line, the button
+            on the right, as wide as its words */}
+        {resume && (
+          <>
+            <span aria-hidden className="w-px shrink-0 bg-[var(--box-line)]" />
+            <button
+              type="button"
+              onClick={() => onContinue(resume.s, resume.v)}
+              tabIndex={searching ? -1 : 0}
+              aria-label={`Continue reading${resumeName ? ` ${ayn(resumeName)},` : ""} at ayah ${resume.s}:${resume.v}`}
+              title="Continue where you left off"
+              className={cn("group -mr-5 flex shrink-0 items-center gap-2 pl-4 pr-5 text-[var(--box-faint)] transition-[color,background-color,opacity] duration-300 hover:bg-[var(--box-hover)] hover:text-[var(--box-fg)] md:-mr-7 md:pl-5 md:pr-7", searching && "pointer-events-none opacity-0")}
+            >
+              <span className="label-sm whitespace-nowrap">
+                Continue <span className="tabular-nums text-[var(--box-muted)] transition-colors duration-300 group-hover:text-[var(--box-fg)]">{resume.s}:{resume.v}</span>
+              </span>
+              <ArrowRight size={12} strokeWidth={1.7} className="shrink-0 transition-transform duration-300 group-hover:translate-x-0.5" />
+            </button>
+          </>
+        )}
       </motion.footer>
 
       <CoverSearch surahs={index?.surahs ?? []} juz={index?.juz ?? {}} open={searching} onClose={closeSearch} onPick={onPick} inputRef={field} />

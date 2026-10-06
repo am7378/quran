@@ -235,6 +235,7 @@ export default function App() {
                 searching={searchingCover}
                 onSearching={setCoverSearch}
                 onPick={onCoverPick}
+                onContinue={goTo}
               />
             </motion.div>
           )}

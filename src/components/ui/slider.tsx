@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { animate, AnimatePresence, motion, useMotionValue, useMotionValueEvent, useSpring, useTransform } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { sfx } from "@/lib/sound";
@@ -20,7 +20,8 @@ const H = THUMB + 16;
 
 const springs = {
   fast: { type: "spring" as const, duration: 0.12, bounce: 0 },
-  settle: { type: "spring" as const, stiffness: 420, damping: 34 },
+  // (critically damped: it comes to rest on its ayah without passing it, never past the track's end)
+  settle: { type: "spring" as const, stiffness: 420, damping: 42 },
 };
 
 type Props = {
@@ -38,7 +39,8 @@ type Props = {
   trackHidden?: boolean; // only the end button shows (the track has nothing to point at)
 };
 
-export function AyahSlider({ value, min = 1, max, onChange, onCommit, onEnd, endIcon, endLabel, format = String, label = "Ayah", className, trackHidden }: Props) {
+export function AyahSlider({ value: asked, min = 1, max, onChange, onCommit, onEnd, endIcon, endLabel, format = String, label = "Ayah", className, trackHidden }: Props) {
+  const value = Math.max(min, Math.min(max, asked)); // (never off the track, whatever is asked)
   const trackRef = useRef<HTMLDivElement>(null);
   const widthRef = useRef(0);
   const dragging = useRef(false);
@@ -55,26 +57,37 @@ export function AyahSlider({ value, min = 1, max, onChange, onCommit, onEnd, end
   const toPx = useCallback((v: number, w = widthRef.current) => ((v - min) / span) * usable(w), [min, span]); // eslint-disable-line react-hooks/exhaustive-deps
   const toVal = useCallback((px: number, w = widthRef.current) => Math.round(Math.max(0, Math.min(1, px / Math.max(1, usable(w)))) * span + min), [min, span]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => {
+  // where the thumb belongs now, for the track's size as it is (read when it is resized)
+  const at = useRef<() => number>(() => 0);
+  at.current = () => toPx(value);
+  // measured before the first frame: the thumb starts on its ayah, never sweeping in from elsewhere
+  useLayoutEffect(() => {
     const el = trackRef.current;
     if (!el) return;
+    widthRef.current = el.clientWidth; // (its own width, not as a growing frame scales it)
+    x.jump(at.current());
     const ro = new ResizeObserver(([e]) => {
+      if (Math.abs(e.contentRect.width - widthRef.current) < 0.5) return;
       widthRef.current = e.contentRect.width;
-      if (!dragging.current) x.set(toPx(value, e.contentRect.width));
+      if (!dragging.current) x.jump(at.current()); // (a new size: in place at once, no glide)
     });
     ro.observe(el);
     return () => ro.disconnect();
-  }, [toPx, value, x]);
+  }, [x]);
 
   useEffect(() => {
-    if (!dragging.current) animate(x, toPx(value), springs.settle);
+    if (dragging.current) return;
+    if (!widthRef.current) x.jump(toPx(value));
+    else animate(x, toPx(value), springs.settle);
   }, [value, toPx, x]);
 
-  const fill = useTransform(x, (v) => v + THUMB / 2);
+  // drawn always within the track: the thumb, the fill and the bubble held between its ends
+  const xc = useTransform(x, (v) => Math.max(0, Math.min(usable(), v)));
+  const fill = useTransform(xc, (v) => v + THUMB / 2);
 
   // hover preview: the bubble and the shadow fill follow the pointer smoothly
-  const previewLeft = useTransform([hxs, x] as never, ([h, t]: number[]) => Math.min(h, t + THUMB / 2));
-  const previewWidth = useTransform([hxs, x] as never, ([h, t]: number[]) => Math.abs(h - (t + THUMB / 2)));
+  const previewLeft = useTransform([hxs, xc] as never, ([h, t]: number[]) => Math.max(0, Math.min(h, t + THUMB / 2)));
+  const previewWidth = useTransform([hxs, xc] as never, ([h, t]: number[]) => Math.min(widthRef.current, Math.abs(Math.max(0, Math.min(widthRef.current, h)) - (t + THUMB / 2))));
   const bubbleX = useTransform(hxs, (h) => h);
   useMotionValueEvent(hxs, "change", (h) => {
     if (!dragging.current) setHoverV(toVal(h - THUMB / 2));
@@ -177,7 +190,7 @@ export function AyahSlider({ value, min = 1, max, onChange, onCommit, onEnd, end
         >
           {/* track */}
           <div
-            className="slider-track absolute left-0 right-0 bg-[var(--box-line)] transition-[height,top] duration-150"
+            className="slider-track absolute left-0 right-0 overflow-hidden bg-[var(--box-line)] transition-[height,top] duration-150"
             style={{ height: hot ? TRACK + 2 : TRACK, top: H / 2 - (hot ? TRACK + 2 : TRACK) / 2 }}
           >
             <motion.div className="slider-fill absolute left-0 top-0 h-full bg-[var(--box-fg)]" style={{ width: fill }} />
@@ -207,7 +220,7 @@ export function AyahSlider({ value, min = 1, max, onChange, onCommit, onEnd, end
           {/* thumb */}
           <motion.span
             className="pointer-events-none absolute left-0 z-10 flex items-center justify-center"
-            style={{ width: THUMB, height: THUMB, top: H / 2 - THUMB / 2, x }}
+            style={{ width: THUMB, height: THUMB, top: H / 2 - THUMB / 2, x: xc }}
           >
             <motion.span
               className="block rounded-full bg-[var(--box-fg)]"

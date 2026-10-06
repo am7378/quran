@@ -90,6 +90,8 @@ export function Select({
   }, [front]);
 
   const surah = surahs[front];
+  // (a surah just come to the front shows its own ayah from its first frame, not the last one's)
+  const shownAyah = handledFront.current === front ? ayah : pendingAyah.current?.surah === front + 1 ? pendingAyah.current.ayah : 1;
 
   // geometry of the ring: pinned to the left edge, front card on the one-third line
   const W = size.w, H = size.h;
@@ -393,10 +395,10 @@ export function Select({
               type="button"
               onClick={() => openFront()}
               className="btn-primary group relative inline-flex h-10 shrink-0 items-center gap-2 whitespace-nowrap border-2 border-[var(--box-fg)] px-3.5 transition-colors hover:bg-[var(--box-fg)] hover:text-[var(--box-bg-solid)]"
-              aria-label={`Open ${ayn(surah.tc)}, ayah ${ayah}`}
+              aria-label={`Open ${ayn(surah.tc)}, ayah ${shownAyah}`}
             >
               <span className="label">
-                Open {surah.n}:{ayah}
+                Open {surah.n}:{shownAyah}
               </span>
               <span className="transition-transform duration-300 group-hover:translate-x-0.5">→</span>
             </button>
@@ -411,10 +413,10 @@ export function Select({
             <div className="mb-1 flex items-center justify-between">
               <span className="label text-[var(--box-faint)]">Ayah</span>
               <span className="label tabular-nums text-[var(--box-muted)]">
-                {ayah} / {surah.count}
+                {shownAyah} / {surah.count}
               </span>
             </div>
-            <AyahSlider key={surah.n} value={Math.min(ayah, surah.count)} max={surah.count} onChange={setAyah} />
+            <AyahSlider key={surah.n} value={Math.min(shownAyah, surah.count)} max={surah.count} onChange={setAyah} />
           </motion.div>
         </div>
       )}

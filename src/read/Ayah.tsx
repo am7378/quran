@@ -336,12 +336,10 @@ export const AyahSection = memo(function AyahSection({
         {!one && showAr && showTr && <div className="h-4" />}
         {translation}
         {more}
-        {/* an ayah too long for the frame: where it ends is plain to see */}
+        {/* an ayah too long for the frame: where it ends is plain to see, a single line */}
         {one && over && (
-          <div data-end-mark className="label-sm mt-9 flex items-center justify-center gap-3 text-[var(--box-faint)]" dir="ltr" aria-hidden>
-            <span className="h-px w-10 bg-[var(--box-line)]" />
-            End of {key}
-            <span className="h-px w-10 bg-[var(--box-line)]" />
+          <div data-end-mark className="mt-9 flex justify-center" aria-hidden>
+            <span className="h-px w-44 bg-[var(--box-line)]" />
           </div>
         )}
       </div>
