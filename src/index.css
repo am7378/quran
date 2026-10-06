@@ -1654,8 +1654,8 @@ mark.hl.fresh {
 /* ══ Blue ════════════════════════════════════════════════════════
    The colours of site UI inspiration/blue.jpg, taken from it: black, the night sky's blues (#050d2e
    overhead to #0c225c, #011947 at the horizon) and royal blue (#4169E1) for what stands out; laid
-   out the way d5 lays out its dashboard. Behind everything that night, its mountains drawn as a
-   laser scan draws them, a cloud of points under a beam that passes slowly (components/ui/skies.tsx).
+   out the way d5 lays out its dashboard. Behind everything its blues as deep currents, folded and
+   slowly drifting, fine royal blue lines along them (components/ui/skies.tsx).
    The frame a pane of dark glass over it, a little rounded; the panels light, as d5's side panel
    is; one geometric sans throughout (Lexend: every mark of the transliterations its own, drawn by
    the face), names light and large, labels small in sentence case; royal blue for the button to
@@ -1695,8 +1695,6 @@ mark.hl.fresh {
   --outside-tab: rgba(233, 236, 245, 0.6);
   --outside-bg: #050d2e;
   --edge-shade: rgba(0, 0, 0, 0.7);
-  /* the surahs' art in the night's blue: in greys, then given royal blue's hue (below) */
-  --art-tone: grayscale(1) brightness(0.78) contrast(1.15);
 }
 /* the panels (Settings, Saved, About…): light, as d5's side panel, royal blue where it is chosen */
 :root[data-theme="blue"] .dark-scope {
@@ -1798,21 +1796,6 @@ mark.hl.fresh {
 :root[data-theme="blue"] .slider-fill {
   background: repeating-linear-gradient(90deg, #4169e1 0 1.5px, transparent 1.5px 5px);
 }
-/* the surahs' cards: their art in the night's blue */
-:root[data-theme="blue"] .surah-art {
-  isolation: isolate;
-}
-:root[data-theme="blue"] .surah-art::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: #2f55d4;
-  mix-blend-mode: color;
-  pointer-events: none;
-}
-:root[data-theme="blue"] .surah-card .font-kufi {
-  text-shadow: 0 0 1.4em rgba(5, 13, 46, 0.8) !important;
-}
 :root[data-theme="blue"] .grain-local {
   display: none;
 }
@@ -1824,17 +1807,6 @@ mark.hl.fresh {
 }
 :root[data-theme="blue"] svg.lucide {
   stroke-width: 1.5px;
-}
-/* the measure of the Qur'an or of the surah (cover, reader), in a row across, as d5's figures */
-.spec-row {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
-  font-family: var(--font-sans);
-  font-size: 11.5px;
-  line-height: 1;
-  white-space: nowrap;
-  color: var(--outside-muted);
 }
 
 /* ── opened from the home screen (html.standalone): the page runs under the status bar, nothing

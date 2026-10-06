@@ -169,63 +169,39 @@ void main() {
   gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }`;
 
-/** Blue: the night of blue.jpg in its own colours (a sky from #050d2e overhead to #0c225c, darker
- *  again at the horizon, long dark clouds across it, black below) with its mountains drawn the way a
- *  laser scan draws them (d5): a cloud of points, royal blue, thickest and brightest along the crests
- *  where the sky lights them, a beam passing slowly over the range; a faint grid on the dark ground. */
+/** Blue: deep currents. The night's blues (#050d2e, #0c225c) and black, a field folded over itself
+ *  and drifting slowly, as ink turns in water; fine royal blue lines (#4169E1) tracing its currents
+ *  where they run bright, royal blue itself only at the crests; black at the edges. */
 const BLUE = `
-float ridgeAt(float x, float port) {
-  float px = mix(0.3, 0.1, port);
-  float d = abs(x - px);
-  float peak = 0.17 * exp(-d * 5.0) + 0.06 * exp(-d * 1.5);
-  float side = 0.05 * exp(-abs(x + 0.62) * 3.2) + 0.035 * exp(-abs(x - 0.92) * 2.8);
-  float rock = (fbm(vec2(x * 3.2, 1.7)) - 0.5) * (0.05 + peak * 0.5) + (n(vec2(x * 15.0, 7.3)) - 0.5) * 0.02;
-  return peak + side + rock;
+float fb3(vec2 p) {
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 3; i++) { v += a * n(p); p = p * 2.03 + vec2(17.0, 9.2); a *= 0.5; }
+  return v / 0.875;
+}
+vec3 tone(float v) {
+  vec3 c = mix(vec3(0.0, 0.002, 0.008), vec3(0.020, 0.051, 0.180), smoothstep(0.18, 0.46, v));
+  c = mix(c, vec3(0.047, 0.133, 0.361), smoothstep(0.46, 0.7, v));
+  c = mix(c, vec3(0.255, 0.412, 0.882), smoothstep(0.68, 0.92, v) * 0.75);
+  return c;
 }
 void main() {
   float m = min(r.x, r.y);
   vec2 p = (gl_FragCoord.xy - 0.5 * r) / m;
-  float port = smoothstep(1.1, 1.6, r.y / r.x);
-  float tt = t * 0.02;
-  float hz = mix(-0.14, -0.8, port); // (on a phone the range along the foot, under the frame)
-  float topY = 0.5 * r.y / m;
-  float sy = clamp((p.y - hz) / (topY - hz), 0.0, 1.0);
-  // the sky, the picture's own blues
-  vec3 top = vec3(0.020, 0.051, 0.180);
-  vec3 mid = vec3(0.047, 0.133, 0.361);
-  vec3 low = vec3(0.004, 0.098, 0.278);
-  vec3 col = mix(low, mid, smoothstep(0.0, 0.32, sy));
-  col = mix(col, top, smoothstep(0.32, 1.0, sy));
-  float cl = fbm(vec2(p.x * 1.3 + tt, p.y * 4.5 - tt * 0.25));
-  col *= 1.0 - 0.5 * smoothstep(0.52, 0.8, cl) * smoothstep(0.0, 0.25, p.y - hz);
-  // the range: black, scanned. Its points lie in rows that follow the crest down the slopes (as a
-  // scanner's lines do), close and bright along the crest where the sky lights it, fewer and fainter
-  // below, until the foot of the range is black
-  float ridge = hz + ridgeAt(p.x, port) * mix(1.0, 0.85, port);
-  float inside = smoothstep(ridge + 0.0015, ridge - 0.0015, p.y);
-  float below = max(ridge - p.y, 0.0);
-  float R = mix(150.0, 110.0, port); // rows to a unit
-  float v = below * R * (1.0 + below * 2.5); // (closer together down the slope, as it turns away)
-  float row = floor(v);
-  float Nx = mix(190.0, 140.0, port);
-  float u = p.x * Nx + h(vec2(row, 3.0)) * 7.0;
-  float col_ = floor(u);
-  vec2 d = vec2((fract(u) - 0.5) / Nx, (fract(v) - 0.5) / (R * (1.0 + below * 5.0)));
-  float rad = mix(0.0016, 0.0021, port);
-  float dotm = 1.0 - smoothstep(rad * 0.55, rad * 1.35, length(d));
-  float lit = exp(-below * 11.0);
-  // the beam: a slow sweep across the range, the points it passes brighter
-  float bx = mod(t * 0.03, 3.4) - 1.7;
-  float bd = (p.x - bx) * 6.0;
-  float beam = exp(-bd * bd) * smoothstep(0.0, 0.05, lit);
-  float keep = step(h(vec2(row, col_)), 0.06 + 0.94 * lit + 0.25 * beam);
-  float k = dotm * keep * (0.08 + 0.92 * lit + 0.75 * beam);
-  vec3 rock = vec3(0.002, 0.003, 0.01) + vec3(0.255, 0.412, 0.882) * k;
-  // the crest itself, a fine line where the points begin
-  float crest = 1.0 - smoothstep(0.0, 0.003, abs(p.y - ridge));
-  rock += vec3(0.255, 0.412, 0.882) * crest * 0.4;
-  col = mix(col, rock, inside);
-  col += (grain(gl_FragCoord.xy) - 0.5) * 0.018;
+  float tt = t * 0.022;
+  // the field, folded twice over itself, each fold drifting its own way
+  vec2 q = vec2(fb3(p * 1.05 + vec2(0.0, tt)), fb3(p * 1.05 + vec2(5.2, 1.3) - vec2(tt * 0.8, 0.0)));
+  vec2 w = vec2(fb3(p * 1.2 + 3.2 * q + vec2(1.7, 9.2) + tt * 0.5), fb3(p * 1.2 + 3.2 * q + vec2(8.3, 2.8) - tt * 0.45));
+  float v = fbm(p * 0.85 + 3.0 * w + vec2(0.0, -tt * 0.3));
+  // a little more light toward the top, as a night sky has
+  v = clamp((v - 0.5) * 1.25 + 0.5, 0.0, 1.0) * (0.86 + 0.26 * smoothstep(-0.9, 0.8, p.y));
+  vec3 col = tone(v);
+  // the currents: fine lines along the field, brighter where it runs bright
+  float lines = iso(v * 13.0);
+  col += vec3(0.255, 0.412, 0.882) * lines * (0.06 + 0.3 * smoothstep(0.42, 0.78, v));
+  // into black at the edges
+  float e = length(p * vec2(0.75, 1.0));
+  col *= 1.0 - 0.6 * smoothstep(0.45, 1.2, e);
+  col += (grain(gl_FragCoord.xy) - 0.5) * 0.016;
   gl_FragColor = vec4(col, 1.0);
 }
 `;

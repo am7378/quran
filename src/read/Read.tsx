@@ -294,7 +294,15 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     target.current = null;
     // a jump: in place before the first frame is drawn, so an ayah opened partway through a surah
     // (8:60 from the index) never shows the surah's opening page on its way in. Only the start of a
-    // surah opens on that page
+    // surah opens on that page. Into the middle, the page is also kept out of sight and unsnapped
+    // until it rests on its ayah (Safari on an iPhone can snap back to the first page as the ayahs
+    // take their heights), then shown
+    const sc = scroller.current;
+    const mid = !t.smooth && t.ayah > 0 && !!sc;
+    if (mid) {
+      sc.style.visibility = "hidden";
+      sc.style.scrollSnapType = "none";
+    }
     if (!t.smooth) {
       scrollToAyah(t.ayah, false);
       setActive(t.ayah);
@@ -302,8 +310,22 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     requestAnimationFrame(() => {
       scrollToAyah(t.ayah, t.smooth);
       setActive(t.ayah);
+      if (!mid) return;
+      // (three more frames for the ayahs around it to settle, put back on its ayah, then shown)
+      let n = 3;
+      const settle = () => {
+        if (--n > 0) return void requestAnimationFrame(settle);
+        const el = sc.querySelector<HTMLElement>(`[data-n="${t.ayah}"]`);
+        if (el && settings.view === 1) sc.scrollTop = el.offsetTop;
+        else scrollToAyah(t.ayah, false);
+        anchorNow.current();
+        sc.style.scrollSnapType = "";
+        sc.style.visibility = "";
+        if (!useStore.getState().settings.reduceMotion) sc.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 280, easing: "cubic-bezier(0, 0, 0.2, 1)" });
+      };
+      requestAnimationFrame(settle);
     });
-  }, [data, scrollToAyah]);
+  }, [data, scrollToAyah]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // keep the ayah in view when the layout changes (view toggle, reading mode, sizes)
   const activeRef = useRef(active);
@@ -1943,17 +1965,6 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
           <div className={cn("absolute inset-0 transition-[opacity,visibility] duration-500", focus &&"pointer-events-none invisible opacity-0")}>
                 {/* the ayah's theme: one ayah at a time, with its translation showing (not the Arabic alone,
                     not scrolling freely; a book of the translation has its headings in the text) */}
-                {/* Blue: the surah's measure in a row of figures above its theme, as d5's */}
-                {settings.theme === "blue" && !mobile && data && data.v.length > 0 && (
-                  <>
-                    <div className="spec-row pointer-events-none absolute inset-x-0 bottom-full mb-[58px]" aria-hidden>
-                      <span>(Surah {surahN} of 114)</span>
-                      <span>{surah.place === "makkah" ? "Makkan" : "Madinan"}</span>
-                      <span>{surah.count} ayat</span>
-                      <span>{data.v[0].j === data.v[data.v.length - 1].j ? `Juz ${data.v[0].j} (of 30)` : `Juz ${data.v[0].j}–${data.v[data.v.length - 1].j} (of 30)`}</span>
-                    </div>
-                  </>
-                )}
                 <AnimatePresence mode="wait">
                   {settings.view === 1 && settings.readingMode !== "arabic" && theme && active >= 1 && !panel && !aboutOpen && (
                     <motion.div
@@ -1984,7 +1995,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
                   }}
                 >
                   <AyahSlider
-                    trackHidden={panel === "reflection"}
+                    trackHidden={panel === "reflection" || !settings.slider}
                     value={Math.min(surah.count, Math.max(1, active))}
                     max={surah.count}
                     onChange={(v) => {

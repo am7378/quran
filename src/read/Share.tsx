@@ -657,11 +657,10 @@ const lunar: Look = (() => {
   };
 })();
 
-/* Blue: the night of blue.jpg: its sky, black below, the range across it drawn as a scan's cloud of
-   royal blue points, brightest on the crests; the ayah over the sky in Lexend, the Arabic white,
-   the translation a pale royal blue; the reference small along the foot, the surah's name in royal. */
+/* Blue: the deep currents of the page behind (skies.tsx): the night's blues on black, folded, fine
+   royal blue lines along the currents; the ayah over them in Lexend, the Arabic white, the
+   translation a pale royal blue; the reference small along the foot, the surah's name in royal. */
 const blue: Look = (() => {
-  const horizonOf = (k: Ctx) => k.H * (k.format === "story" ? 0.7 : 0.74);
   return {
     fonts: ['300 40px "Lexend Variable"', '400 24px "Lexend Variable"'],
     ar: "#eef1f8",
@@ -669,72 +668,42 @@ const blue: Look = (() => {
     trFont: (px: number) => `300 ${Math.round(px * 0.9)}px "Lexend Variable", "Marks Sans", sans-serif`,
     paint(g: CanvasRenderingContext2D, k: Ctx) {
       const { W, H, S } = k;
-      const hz = horizonOf(k);
-      // the sky, the picture's own blues
-      const sky = g.createLinearGradient(0, 0, 0, hz);
-      sky.addColorStop(0, "#050d2e");
-      sky.addColorStop(0.62, "#0c225c");
-      sky.addColorStop(1, "#011947");
-      g.fillStyle = sky;
-      g.fillRect(0, 0, W, hz + 2);
-      g.fillStyle = "#000";
-      g.fillRect(0, hz, W, H - hz);
-      // long dark clouds
-      const rnd = seeded(k.seed + 21);
-      for (let i = 0; i < 8; i++) {
-        const cy = hz * (0.15 + rnd() * 0.75), hh = S * (0.012 + rnd() * 0.025);
-        const cx = rnd() * W, cw = W * (0.35 + rnd() * 0.5);
-        const soft = g.createRadialGradient(0, 0, 0, 0, 0, 1);
-        soft.addColorStop(0, `rgba(2,6,22,${0.3 + rnd() * 0.3})`);
-        soft.addColorStop(1, "rgba(2,6,22,0)");
-        g.save();
-        g.translate(cx, cy);
-        g.scale(cw / 2, hh);
-        g.fillStyle = soft;
+      g.fillStyle = "#010309";
+      g.fillRect(0, 0, W, H);
+      const rnd = seeded(k.seed + 31);
+      // the currents: wide soft pools of the night's blues, one of royal blue
+      const pool = (x: number, y: number, rad: number, col: string) => {
+        const gr = g.createRadialGradient(x, y, 0, x, y, rad);
+        gr.addColorStop(0, col);
+        gr.addColorStop(1, "rgba(5,13,46,0)");
+        g.fillStyle = gr;
+        g.fillRect(0, 0, W, H);
+      };
+      for (let i = 0; i < 6; i++) pool(rnd() * W, rnd() * H, S * (0.35 + rnd() * 0.4), i % 2 ? "rgba(12,34,92,0.75)" : "rgba(5,13,46,0.9)");
+      pool(W * (0.2 + rnd() * 0.6), H * (0.15 + rnd() * 0.3), S * 0.32, "rgba(65,105,225,0.32)");
+      // their lines: long waves across, each a little unlike the one before
+      g.lineWidth = Math.max(1.2, S * 0.0012);
+      const ph = rnd() * 6.28, f1 = 1.5 + rnd(), f2 = 3 + rnd() * 2;
+      for (let i = 0; i < 22; i++) {
+        const y0 = (H * (i + 0.5)) / 22;
+        g.strokeStyle = `rgba(65,105,225,${0.06 + 0.12 * Math.abs(Math.sin(i * 0.7 + ph))})`;
         g.beginPath();
-        g.arc(0, 0, 1, 0, Math.PI * 2);
-        g.fill();
-        g.restore();
-      }
-      // the range: its crest line, black below it, a cloud of points over it
-      const jag = seeded(k.seed + 5);
-      const knots = Array.from({ length: 12 }, () => jag() - 0.5);
-      const fine = Array.from({ length: 70 }, () => jag() - 0.5);
-      const noise = (arr: number[], t: number) => {
-        const f = t * (arr.length - 1), i = Math.min(arr.length - 2, Math.floor(f)), u = f - i;
-        return arr[i] + (arr[i + 1] - arr[i]) * u * u * (3 - 2 * u);
-      };
-      const crest = (x: number) => {
-        const t = x / W, d = Math.abs(x - W * 0.62) / W;
-        const peak = 0.16 * Math.exp(-d * 9) + 0.05 * Math.exp(-d * 2.6);
-        const side = 0.05 * Math.exp((-Math.abs(x - W * 0.14) / W) * 5) + 0.03 * Math.exp((-Math.abs(x - W * 0.9) / W) * 6);
-        return hz - S * (0.02 + peak + side + noise(knots, t) * (0.03 + peak * 0.22) + noise(fine, t) * 0.007);
-      };
-      g.fillStyle = "#010208";
-      g.beginPath();
-      g.moveTo(0, H);
-      for (let x = 0; x <= W; x += S * 0.003) g.lineTo(x, crest(x));
-      g.lineTo(W, H);
-      g.closePath();
-      g.fill();
-      const step = S * 0.0085, dots = seeded(k.seed + 9);
-      for (let x = 0; x < W; x += step)
-        for (let y = crest(x); y < H; y += step) {
-          const below = (y - crest(x)) / S;
-          const lit = Math.exp(-below * 10) + 0.25 * dots() - 0.1;
-          if (dots() > 0.35 + lit * 0.5) continue;
-          g.fillStyle = `rgba(65,105,225,${Math.min(0.95, 0.18 + lit * 0.8)})`;
-          g.beginPath();
-          g.arc(x + (dots() - 0.5) * step * 0.6, y + (dots() - 0.5) * step * 0.6, S * 0.0016, 0, Math.PI * 2);
-          g.fill();
+        for (let x = 0; x <= W; x += S * 0.01) {
+          const u = x / W;
+          const y = y0 + S * (0.05 * Math.sin(u * f1 * 6.28 + ph + i * 0.35) + 0.025 * Math.sin(u * f2 * 6.28 - ph * 1.3 + i * 0.6));
+          if (x === 0) g.moveTo(x, y);
+          else g.lineTo(x, y);
         }
-      g.strokeStyle = "rgba(65,105,225,0.45)";
-      g.lineWidth = Math.max(1.5, S * 0.0014);
-      g.beginPath();
-      for (let x = 0; x <= W; x += S * 0.003) (x === 0 ? g.moveTo(x, crest(x)) : g.lineTo(x, crest(x)));
-      g.stroke();
+        g.stroke();
+      }
+      // into black at the edges
+      const v = g.createRadialGradient(W / 2, H / 2, S * 0.3, W / 2, H / 2, Math.hypot(W, H) * 0.62);
+      v.addColorStop(0, "rgba(0,0,0,0)");
+      v.addColorStop(1, "rgba(0,0,0,0.7)");
+      g.fillStyle = v;
+      g.fillRect(0, 0, W, H);
       grainOn(g, k, 0.3);
-      return { top: S * 0.1, bottom: hz - S * 0.24, padX: W * (k.format === "landscape" ? 0.12 : 0.11) };
+      return { top: S * 0.12, bottom: H - k.fs * 6, padX: W * (k.format === "landscape" ? 0.12 : 0.11) };
     },
     rule(g: CanvasRenderingContext2D, x: number, y: number) {
       g.fillStyle = "#4169e1";

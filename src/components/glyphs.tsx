@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
 
 /**
- * The reflection's mark: a quill, its line still being written. Drawn as the site's other icons
- * are (class "lucide"), so each theme gives it its own line: Paper's as by a pen, Lunar's fine.
+ * The reflection's mark: a page of one's own writing, a pen at its corner. Drawn as the site's other
+ * icons are (class "lucide"), so each theme gives it its own line.
  */
 export function QuillGlyph({ size = 16, strokeWidth = 1.6, className }: { size?: number; strokeWidth?: number; className?: string }) {
   return (
@@ -18,10 +18,10 @@ export function QuillGlyph({ size = 16, strokeWidth = 1.6, className }: { size?:
       className={cn("lucide", className)}
       aria-hidden
     >
-      <path d="M20 3.6c-6.4.4-11 4.9-12.4 11.9l-1.2 3.1" />
-      <path d="M20 3.6c-.7 5.7-4.7 10.4-10.9 11.6" />
-      <path d="M11.4 10.6l3.2.4M9.6 13.3l2.7.3" />
-      <path d="M3.5 21c3.3-1.6 6.4-.2 9.6-.9 1.8-.4 3.3-1.1 5.6-.8" />
+      {/* a page of one's own writing, the pen at its corner: drawn as the site's other icons are */}
+      <path d="M12.5 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6.5" />
+      <path d="M8 13.5h3.5M8 17.5h8" />
+      <path d="M18.3 2.7a1.6 1.6 0 0 1 2.3 2.3l-6.4 6.4-3 .8.8-3z" />
     </svg>
   );
 }

@@ -300,6 +300,7 @@ function DisplayTab({ s, set }: TabProps) {
           </Row>
         </>
       )}
+      <Toggle label="Ayah slider" on={s.slider} set={(v) => set({ slider: v })} />
       <Toggle label="Film grain" on={s.grain} set={(v) => set({ grain: v })} />
       <Toggle label="Reduce motion" on={s.reduceMotion} set={(v) => set({ reduceMotion: v })} />
     </>

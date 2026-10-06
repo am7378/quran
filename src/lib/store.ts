@@ -58,6 +58,7 @@ export type Settings = {
   boxTheme: "night" | "paper";
   theme: ThemeId; // the whole site's look (lib/themes.ts)
   grain: boolean;
+  slider: boolean; // the ayah slider under the reading frame
   reduceMotion: boolean;
   view: 1 | 3;
   book: boolean; // Arabic only or a translation only, in the multiple-ayah view: the ayahs run on like a book
@@ -128,6 +129,7 @@ const DEFAULTS: Settings = {
   translit: true,
   boxTheme: "night",
   theme: "classic",
+  slider: true,
   grain: true,
   reduceMotion: false,
   view: 1,
