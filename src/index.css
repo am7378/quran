@@ -814,12 +814,13 @@ mark.hl.fresh {
   box-shadow: -3px -3px 6px rgba(0, 0, 0, 0.08);
 }
 
+/* the phone's Reduce Motion: what moves is held (the grain here, the turning print below, the sky in
+   Backdrop), and the movements framer-motion makes are skipped (MotionConfig, main.tsx). Never a rule
+   for every element: it gives each of the page's tens of thousands of nodes (and their ::before and
+   ::after) style of its own to keep, some 170MB on a long surah, and with any time at all in it,
+   every change of style anywhere becomes a transition: an iPhone ran out of memory. */
 @media (prefers-reduced-motion: reduce) {
   .grain { animation: none; }
-  *, *::before, *::after {
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
 }
 :root[data-motion="reduce"] .grain { animation: none; }
 

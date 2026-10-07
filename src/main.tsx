@@ -1,4 +1,5 @@
 import { StrictMode } from "react";
+import { MotionConfig } from "framer-motion";
 import { createRoot } from "react-dom/client";
 import "@fontsource-variable/geist";
 import "@fontsource-variable/geist-mono";
@@ -39,7 +40,10 @@ import App from "./App";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <App />
+    {/* (the phone's Reduce Motion: slides, zooms and turns skipped, fades kept) */}
+    <MotionConfig reducedMotion="user">
+      <App />
+    </MotionConfig>
   </StrictMode>,
 );
 

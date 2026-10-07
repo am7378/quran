@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { startTransition, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -2133,6 +2133,12 @@ function Opener({
   indopak: boolean;
 }) {
   const k = viewH ? Math.min(1, Math.max(0.62, viewH / 600)) : 1; // short frames get a smaller title
+  // the nudge to scroll moves only when it can be seen (a few times, once), and never where the
+  // phone or the reader asks for less motion: moving out of sight it would be the page's only work,
+  // every frame, and under the phone's Reduce Motion each of those frames would start a transition
+  const phoneStill = useReducedMotion();
+  const readerStill = useStore((s) => s.settings.reduceMotion);
+  const still = phoneStill || readerStill;
   return (
     <section data-n={0} className="snap-item snap-page relative flex min-h-full flex-col items-center justify-center overflow-hidden px-8 text-center">
       <SurahArt n={surah.n} blur={30} className="opacity-45" />
@@ -2193,7 +2199,12 @@ function Opener({
           >
             <span className="label">{mobile ? "Surah summary" : "Read the surah summary"}</span>
           </button>
-          <motion.span className="label text-[var(--box-faint)]" animate={{ y: [0, 5, 0] }} transition={{ duration: 2.2, repeat: 4, ease: "easeInOut" }}>
+          <motion.span
+            className="label text-[var(--box-faint)]"
+            whileInView={still ? undefined : { y: [0, 5, 0] }}
+            viewport={{ once: true }}
+            transition={{ duration: 2.2, repeat: 4, ease: "easeInOut" }}
+          >
             Scroll to begin surah ↓
           </motion.span>
         </motion.div>

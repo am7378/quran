@@ -1,17 +1,21 @@
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { NightHero } from "./ui/hero";
 import { MonoSky } from "./ui/mono-sky";
 import { AtlasSky, BlueSky, FolioSky, LunarSky, PaperSky } from "./ui/skies";
 import type { ThemeId } from "@/lib/themes";
 import { isTouch, useIdle } from "@/lib/motion";
+import { useStore } from "@/lib/store";
 
 export type Phase = "intro" | "select" | "read";
 
 /** Fixed background: the theme's own sky behind every page, crossfading when the theme changes. */
 export function Backdrop({ theme, still: held, grain }: { theme: ThemeId; still?: boolean; grain?: boolean }) {
-  // (a phone at rest: the sky holds still until the page is touched again)
+  // (a phone at rest: the sky holds still until the page is touched again; and always, where the
+  // phone or the reader asks for less motion)
   const idle = useIdle((s) => s.idle);
-  const still = held || idle;
+  const phoneStill = useReducedMotion();
+  const readerStill = useStore((s) => s.settings.reduceMotion);
+  const still = held || idle || !!phoneStill || readerStill;
   return (
     <div className="fixed inset-0 overflow-hidden" aria-hidden>
       <AnimatePresence initial={false}>
