@@ -534,33 +534,20 @@ html.touch .grain-local {
 .snap-scroller::-webkit-scrollbar {
   display: none;
 }
-/* one ayah at a time: each ayah is a page the frame's height. One too long for it scrolls within
-   itself, with the phone's own scrolling: a flick stops at its end, and only a new swipe from there
-   goes on, the page snapping to the next ayah (Ayah.tsx, Read.tsx) */
-.ayah-page {
-  overflow-y: auto;
-  overscroll-behavior-y: auto;
-  touch-action: pan-y;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
+/* one ayah at a time: moved by the reader's own hand, a finger, the wheel, the keys (pager.ts), not
+   by the browser's snapping; on a phone the finger's scrolling is the page's own */
+.snap-scroller.paged {
+  scroll-snap-type: none;
 }
-.ayah-page::-webkit-scrollbar {
-  display: none;
+/* (at rest on an ayah's top, held there by the snapping: heights changing above move nothing) */
+.snap-scroller.paged.resting {
+  scroll-snap-type: y mandatory;
+}
+html.touch .snap-scroller.paged {
+  touch-action: none;
 }
 .snap-item {
   scroll-snap-align: start;
-  scroll-snap-stop: always;
-}
-/* the foot of an ayah: a long one (taller than the frame) is read down to its end, and the scrolling
-   stops there before the next ayah; for one that fits it is the same place as its top */
-.ayah-end-stop {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: 1px;
-  pointer-events: none;
-  scroll-snap-align: end;
   scroll-snap-stop: always;
 }
 /* an ayah far from the frame is not laid out; it holds its place at about its height (Ayah.tsx) */
