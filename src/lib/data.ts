@@ -76,7 +76,7 @@ export function loadSurah(n: number): Promise<SurahData> {
         // carry each theme heading forward so every ayah knows its theme
         let cur: string | null = null;
         const full = fullHeadings(d.v);
-        const themes = d.v.map((v, i) => (cur = full[i] ?? cur));
+        const themes = d.v.map((_, i) => (cur = full[i] ?? cur));
         return { ...d, themes };
       });
     p.catch(() => cache.delete(n));

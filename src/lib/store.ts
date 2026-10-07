@@ -246,4 +246,4 @@ export const useStore = create<State>()(
   ),
 );
 
-export const useSettings = () => useStore((s) => s.settings);
+

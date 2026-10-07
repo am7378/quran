@@ -4,7 +4,7 @@ import { pad3 } from "@/lib/data";
 import { themeOf } from "@/lib/surahThemes";
 import { MotifArt } from "./Motif";
 import { cn } from "@/lib/utils";
-import { ayn, nameMarks } from "@/lib/names";
+import { nameMarks } from "@/lib/names";
 
 /** The blurred artwork alone — also used for the zoom into the reading page. */
 export const SurahArt = memo(function SurahArt({ n, blur = 9, className }: { n: number; blur?: number; className?: string }) {

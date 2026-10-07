@@ -4,7 +4,7 @@ import type { Surah } from "@/lib/data";
 import { pad3 } from "@/lib/data";
 import { searchDirect, searchText, type Result } from "@/lib/search";
 import { cn, EASE_OUT } from "@/lib/utils";
-import { ayn, nameMarks } from "@/lib/names";
+import { nameMarks } from "@/lib/names";
 
 type Props = {
   surahs: Surah[];

@@ -10,6 +10,16 @@ export const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.mi
 export const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
 
 export const EASE_OUT: [number, number, number, number] = [0.16, 1, 0.3, 1];
+
+/** f, when the page has a moment (Safari has no requestIdleCallback: a short wait there); returns a cancel */
+export function whenIdle(f: () => void, timeout = 1500) {
+  if (typeof requestIdleCallback === "function") {
+    const id = requestIdleCallback(f, { timeout });
+    return () => cancelIdleCallback(id);
+  }
+  const id = window.setTimeout(f, 60);
+  return () => window.clearTimeout(id);
+}
 export const EASE_IN_OUT: [number, number, number, number] = [0.76, 0, 0.24, 1];
 
 export async function copyText(text: string) {

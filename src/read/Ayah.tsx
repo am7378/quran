@@ -24,6 +24,7 @@ type Props = {
   /** within a couple of ayahs of the one being read */
   near?: boolean;
   isLast?: boolean;
+  light?: boolean; // not built yet: only its place held (Read)
 };
 
 const EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
@@ -42,6 +43,7 @@ export const AyahSection = memo(function AyahSection({
   viewW,
   near,
   isLast,
+  light,
 }: Props) {
   const key = `${surah}:${v.n}`;
   const view = settings.view;
@@ -88,32 +90,31 @@ export const AyahSection = memo(function AyahSection({
   const trRef = useRef<HTMLParagraphElement>(null);
 
   /* ── every ayah at the reader's own size, however long: never made smaller to fit the frame. In
-     the one-ayah view one too long for the frame scrolls within itself, down to a mark at its end
-     (and only a further swipe goes on to the next). ── */
+     the one-ayah view one too long for the frame is read down to a mark at its end (and only a
+     further swipe goes on to the next: pager.ts). ── */
   const [over, setOver] = useState(false);
   const arPx = arabicSize(v, view, mobile, settings.arabicScale * (settings.readingMode === "arabic" ? 1.18 : 1));
   const trPx = translationSize(tr.canon, view, mobile, settings.transScale * (settings.readingMode === "translation" ? 1.15 : 1));
 
   const sig = `${view}|${settings.readingMode}|${settings.translation}|${settings.also.join(",")}|${settings.script}|${settings.arabicSpacing}|${settings.arabicScale}|${settings.transScale}|${mobile}`;
-  useLayoutEffect(() => {
+  // (the line it decides on takes no room: so it is asked once the page is drawn, never while it is
+  // being laid out, and only of the ayahs about the reader; one not laid out yet is asked again as it
+  // is: shownTick)
+  useEffect(() => {
     const el = ref.current;
-    if (!el || !one || !viewH) {
+    if (!el || !one || !viewH || light) {
       if (over) setOver(false);
       return;
     }
-    // not laid out yet: measured when it comes near (shownTick), or now, alone, if it is
-    // already beside the one being read (a jump lands before the browser has laid it out)
-    const skipped = isSkipped(el);
-    if (skipped && !near) return;
-    if (skipped) el.style.contentVisibility = "visible";
-    // (without the end mark, which is there only because it is long)
-    const mark = el.querySelector<HTMLElement>("[data-end-mark]");
-    const h = el.offsetHeight - (mark ? mark.offsetHeight + 36 : 0);
-    if (skipped) el.style.contentVisibility = "";
-    const room = el.closest<HTMLElement>(".snap-scroller")?.clientHeight || viewH;
-    const o = h > room + 1;
-    if (o !== over) setOver(o);
-  }, [sig, settings.showContext, over, one, viewH, shownTick, near]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (!near) return;
+    const id = requestAnimationFrame(() => {
+      if (isSkipped(el)) return;
+      const room = el.closest<HTMLElement>(".snap-scroller")?.clientHeight || viewH;
+      const o = el.offsetHeight > room + 1;
+      if (o !== over) setOver(o);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [sig, settings.showContext, over, one, viewH, shownTick, near, light]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ── context on and off. In the one-ayah view the old text fades out, the new
      one fades in, and the ayah glides to its new centre; only transforms and
@@ -141,7 +142,7 @@ export const AyahSection = memo(function AyahSection({
       const sr = sc?.getBoundingClientRect() ?? new DOMRect(0, 0, window.innerWidth, window.innerHeight);
       return { r, sr, seen: r.bottom > sr.top + 1 && r.top < sr.bottom - 1 };
     };
-    const { r, sr, seen } = where();
+    const { seen } = where();
     if (!seen) {
       whenNear(sec, () => {
         if (!ref.current || want.current === shown.current) return;
@@ -212,6 +213,48 @@ export const AyahSection = memo(function AyahSection({
     told.current = ctxShown;
     heightsChanged();
   }, [ctxShown]);
+
+  // the height held while it is not laid out (inside its padding): its lines at their sizes
+  // across the frame's width (measured averages: an Arabic letter 0.215 of the type size, an
+  // English one 0.41). Before the frame is measured, its width from the window's, so a surah's
+  // first render lays out a few ayahs too.
+  const fw = viewW || Math.round(Math.min(window.innerWidth, 1600) * (mobile ? 0.9 : 0.76));
+  const w = Math.max(220, fw * (one ? 0.8 : 0.88) - 50);
+  const lines = (chars: number, px: number, k: number) => Math.max(1, Math.ceil((chars * px * k) / w));
+  let hold = 0;
+  if (showAr) hold += lines(arCanon.length, arPx, close ? 0.2 : 0.215) * arPx * (close ? 1.85 : one ? 2.1 : 2);
+  if (showTr) hold += lines(tr.canon.length * (tr.source === "qme" && !ctxShown ? 0.62 : 1), trPx, 0.41) * trPx * 1.6;
+  for (const x of extras) hold += lines(x.canon.length, trPx * 0.94, 0.41) * trPx * 1.5 + 44;
+  // and the number, the rule or gap between Arabic and English (the one-ayah view's full-height
+  // minimum makes up the rest)
+  hold = Math.round(hold + (one ? 60 : showAr && showTr ? 38 : 8));
+  if (!one) hold = Math.max(hold, showAr ? 188 : 168); // (the buttons' height, as the section's minimum)
+
+  const sectionClass = cn(
+    "snap-item cv relative flex flex-col",
+    one
+      ? "min-h-full justify-center pl-[max(7%,34px)] pr-[max(7%,66px)] md:pl-[9%] md:pr-[max(9%,64px)]"
+      : cn(
+          "justify-center border-b border-[var(--box-line)] pb-9 pl-[max(6%,34px)] pr-[max(calc(6%+44px),66px)] pt-7 md:pl-[6%] md:pr-[calc(6%+44px)] md:pt-9",
+          // never shorter than its column of buttons (five, 168px) with the column's insets
+          showAr ? "min-h-[252px] md:min-h-[260px]" : "min-h-[232px] md:min-h-[240px]",
+        ),
+  );
+  // not built yet (Read builds a surah around where the reader lands, the rest as it has time): its
+  // place held at about its height, with nothing in it
+  if (light)
+    return (
+      <section
+        ref={ref}
+        data-key={key}
+        data-n={v.n}
+        data-first={v.n === 1 || undefined}
+        data-last={isLast || undefined}
+        className={sectionClass}
+        style={{ paddingTop: one ? "6%" : undefined, paddingBottom: one ? FOOT : undefined, minHeight: hold, containIntrinsicSize: `auto ${hold}px` }}
+        aria-label={`Ayah ${key}`}
+      />
+    );
 
   const actions = (
     <Actions bookmarked={bookmarked} notes={notes} voices={voices} onAction={(a, el) => onAction(a, v, el)} />
@@ -293,21 +336,6 @@ export const AyahSection = memo(function AyahSection({
     </div>
   );
 
-  // the height held while it is not laid out (inside its padding): its lines at their sizes
-  // across the frame's width (measured averages: an Arabic letter 0.215 of the type size, an
-  // English one 0.41). Before the frame is measured, its width from the window's, so a surah's
-  // first render lays out a few ayahs too.
-  const fw = viewW || Math.round(Math.min(window.innerWidth, 1600) * (mobile ? 0.9 : 0.76));
-  const w = Math.max(220, fw * (one ? 0.8 : 0.88) - 50);
-  const lines = (chars: number, px: number, k: number) => Math.max(1, Math.ceil((chars * px * k) / w));
-  let hold = 0;
-  if (showAr) hold += lines(arCanon.length, arPx, close ? 0.2 : 0.215) * arPx * (close ? 1.85 : one ? 2.1 : 2);
-  if (showTr) hold += lines(tr.canon.length * (tr.source === "qme" && !ctxShown ? 0.62 : 1), trPx, 0.41) * trPx * 1.6;
-  for (const x of extras) hold += lines(x.canon.length, trPx * 0.94, 0.41) * trPx * 1.5 + 44;
-  // and the number, the rule or gap between Arabic and English (the one-ayah view's full-height
-  // minimum makes up the rest)
-  hold = Math.round(hold + (one ? 60 : showAr && showTr ? 38 : 8));
-  if (!one) hold = Math.max(hold, showAr ? 188 : 168); // (the buttons' height, as the section's minimum)
 
   return (
     <section
@@ -316,29 +344,21 @@ export const AyahSection = memo(function AyahSection({
       data-n={v.n}
       data-first={v.n === 1 || undefined}
       data-last={isLast || undefined}
-      className={cn(
-        "snap-item cv relative flex flex-col",
-        one
-          ? "min-h-full justify-center pl-[max(7%,34px)] pr-[max(7%,66px)] md:pl-[9%] md:pr-[max(9%,64px)]"
-          : cn(
-              "justify-center border-b border-[var(--box-line)] pb-9 pl-[max(6%,34px)] pr-[max(calc(6%+44px),66px)] pt-7 md:pl-[6%] md:pr-[calc(6%+44px)] md:pt-9",
-              // never shorter than its column of buttons (five, 168px) with the column's insets
-              showAr ? "min-h-[252px] md:min-h-[260px]" : "min-h-[232px] md:min-h-[240px]",
-            ),
-      )}
-      style={{ paddingBlock: one ? "6%" : undefined, containIntrinsicSize: `auto ${hold}px` }}
+      className={sectionClass}
+      style={{ paddingTop: one ? "6%" : undefined, paddingBottom: one ? FOOT : undefined, containIntrinsicSize: `auto ${hold}px` }}
       aria-label={`Ayah ${key}`}
     >
-      <div data-inner>
+      <div data-inner className={one ? "relative" : undefined}>
         {number}
         {arabic}
         {divider}
         {!one && showAr && showTr && <div className="h-4" />}
         {translation}
         {more}
-        {/* an ayah too long for the frame: where it ends is plain to see, a single line */}
+        {/* an ayah too long for the frame: where it ends is plain to see, a single line (in the
+            margin below it: shown or not, it moves nothing) */}
         {one && over && (
-          <div data-end-mark className="mt-9 flex justify-center" aria-hidden>
+          <div data-end-mark className="pointer-events-none absolute inset-x-0 top-full mt-6 flex justify-center" aria-hidden>
             <span className="h-px w-44 bg-[var(--box-line)]" />
           </div>
         )}
@@ -351,6 +371,10 @@ export const AyahSection = memo(function AyahSection({
     </section>
   );
 });
+
+/** one ayah at a time, the page's foot: its margin and room for the line that marks a long ayah's end
+    (the same for every ayah, the line or not: nothing moves when it shows) */
+const FOOT = "calc(6% + 28px)";
 
 /** Whether the browser is skipping an ayah's contents (content-visibility, far from the frame). */
 function isSkipped(sec: HTMLElement) {

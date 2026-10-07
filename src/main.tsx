@@ -34,6 +34,13 @@ import "@fontsource/spectral/500.css";
 // Blue: one geometric sans for everything (every mark of the transliterations its own)
 import "@fontsource-variable/lexend/wght.css";
 import "@fontsource/courier-prime/400.css";
+// Crimson: Crimson Pro to read, Amiri's Latin (made beside its Arabic) for the names
+import "@fontsource-variable/crimson-pro/wght.css";
+import "@fontsource-variable/crimson-pro/wght-italic.css";
+import "@fontsource/amiri/latin-400.css";
+import "@fontsource/amiri/latin-400-italic.css";
+import "@fontsource/amiri/latin-ext-400.css";
+import "@fontsource/amiri/latin-ext-400-italic.css";
 import "@fontsource/courier-prime/700.css";
 import "./index.css";
 import App from "./App";

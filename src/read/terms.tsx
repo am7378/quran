@@ -40,10 +40,16 @@ const HON_RE = /[ﷺ﵊﵁﵂﵃]/;
 /** Glossary entry for a word as it appears in the text ('Kuffaar)', "Allaah's"). */
 export function glossFor(token: string): Gloss | null {
   if (!GLOSSARY) return null;
-  const core = token.replace(/^[^A-Za-z]+|[^A-Za-z']+$/g, "").replace(/['’]s$/, "");
-  if (!core) return null;
-  return GLOSSARY.get(core.toLowerCase()) ?? null;
+  // (asked for every word of every translation shown: each word's answer kept)
+  let g = seen.get(token);
+  if (g === undefined) {
+    const core = token.replace(/^[^A-Za-z]+|[^A-Za-z']+$/g, "").replace(/['’]s$/, "");
+    g = (core && GLOSSARY.get(core.toLowerCase())) || null;
+    seen.set(token, g);
+  }
+  return g;
 }
+const seen = new Map<string, Gloss | null>();
 
 let BY_TERM: Map<string, Gloss> | null = null;
 /** A glossary entry by its whole term ('ar rahmaan'): how a phrase's tooltip finds it. */

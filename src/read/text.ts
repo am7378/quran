@@ -138,17 +138,8 @@ export function snapToLatinWords(canon: string, [s, e]: [number, number]): [numb
   return [s, e];
 }
 
-/** Arabic highlights cover whole words so letters keep their joined forms. */
-export function snapToWords(words: Word[], [s, e]: [number, number]): [number, number] {
-  const first = words.find((w) => w.end > s) ?? words[0];
-  const last = [...words].reverse().find((w) => w.start < e) ?? words[words.length - 1];
-  return [first.start, Math.max(first.end, last.end)];
-}
-
-/** Arabic font size by length, so short ayahs are monumental and long ones fit. */
-/** Arabic type size. One ayah per view: sized to the ayah's length. Scrolling: one size for every ayah. */
 /* One size for every ayah, long or short: the reader's own sizes (Settings) and nothing else. An
-   ayah is never made smaller to fit the frame; one too long for it scrolls (Ayah.tsx). */
+   ayah is never made smaller to fit the frame; one too long for it is read on down (pager.ts). */
 export function arabicSize(_v: Verse, view: 1 | 3, mobile: boolean, scale: number) {
   if (view === 3) return Math.round((mobile ? 26 : 31) * scale);
   return Math.round((mobile ? 29 : 38) * scale);

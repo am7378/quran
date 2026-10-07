@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { get } from "idb-keyval";
 import { Copy, Download, Share2, X as Close } from "lucide-react";
-import type { Note } from "@/lib/store";
+import { useStore, type Note } from "@/lib/store";
 import { EASE_OUT, cn, copyText } from "@/lib/utils";
 import { grain, wrap } from "./Share";
 import { ayn } from "@/lib/names";
@@ -17,10 +17,17 @@ import { voiceKey } from "./VoiceNote";
 const S = 1080;
 
 /** the night the site sits in, as the ground the note lies on */
+/** the note's paper: yellow, or Crimson's parchment (index.css .note-paper) */
+const paperOf = () =>
+  useStore.getState().settings.theme === "crimson"
+    ? { ground: ["#5a0d13", "#22040a"], paper: ["#d9c9a9", "#cdb895", "#b39c78"], lines: "rgba(92,62,30,0.2)", curl: ["#b9a37f", "#e2d5bb"] }
+    : { ground: ["#15284a", "#070b14"], paper: ["#fff1a1", "#fde47a", "#f7d65e"], lines: "rgba(80,110,170,0.28)", curl: ["#f3e08a", "#fff4b8"] };
+
 function ground(g: CanvasRenderingContext2D) {
   const bg = g.createLinearGradient(0, 0, S * 0.5, S);
-  bg.addColorStop(0, "#15284a");
-  bg.addColorStop(1, "#070b14");
+  const [from, to] = paperOf().ground;
+  bg.addColorStop(0, from);
+  bg.addColorStop(1, to);
   g.fillStyle = bg;
   g.fillRect(0, 0, S, S);
   const glow = (x: number, y: number, r: number, col: string) => {
@@ -79,7 +86,7 @@ async function fonts() {
 const toBlob = (c: HTMLCanvasElement, type = "image/png") =>
   new Promise<Blob>((res, rej) => c.toBlob((b) => (b ? res(b) : rej(new Error("render failed"))), type, 0.95));
 
-/** A written note as the yellow sticky note it is, lying on the night. */
+/** A written note as the sticky note it is (yellow; Crimson's, parchment), lying on the theme's ground. */
 export async function renderNoteImage(note: Note, surahName: string): Promise<Blob> {
   await fonts();
   const c = document.createElement("canvas");
@@ -97,10 +104,11 @@ export async function renderNoteImage(note: Note, surahName: string): Promise<Bl
   g.shadowColor = "rgba(0,0,0,0.5)";
   g.shadowBlur = 70;
   g.shadowOffsetY = 34;
+  const look = paperOf();
   const paper = g.createLinearGradient(x0, y0, x0 + P * 0.6, y0 + P);
-  paper.addColorStop(0, "#fff1a1");
-  paper.addColorStop(0.55, "#fde47a");
-  paper.addColorStop(1, "#f7d65e");
+  paper.addColorStop(0, look.paper[0]);
+  paper.addColorStop(0.55, look.paper[1]);
+  paper.addColorStop(1, look.paper[2]);
   g.fillStyle = paper;
   g.fillRect(x0, y0, P, P);
   g.restore();
@@ -110,9 +118,9 @@ export async function renderNoteImage(note: Note, surahName: string): Promise<Bl
   g.fillStyle = lift;
   g.fillRect(x0, y0, P, 90);
   const LH = 58;
-  g.fillStyle = "rgba(80,110,170,0.28)";
+  g.fillStyle = look.lines;
   for (let y = y0 + 150; y < y0 + P - 20; y += LH) g.fillRect(x0, y, P, 2);
-  curl(g, x0 + P, y0 + P, 80, "#f3e08a", "#fff4b8");
+  curl(g, x0 + P, y0 + P, 80, look.curl[0], look.curl[1]);
   tape(g, S / 2, y0 + 4, 210, -3);
 
   // the ayah it is on, the words it holds on to, and what was written

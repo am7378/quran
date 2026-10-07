@@ -67,44 +67,57 @@ export function createPager(
   /* ── moving the page ── */
   let raf = 0;
   let follow: { el: HTMLElement; rel: number } | null = null; // where a turn of the wheel is taking the page
+  let gliding: { anims: Animation[]; els: HTMLElement[] } | null = null;
+  // a glide stopped where it is: what is shown now becomes the page's place
+  const land = () => {
+    if (!gliding) return;
+    const { anims, els } = gliding;
+    gliding = null;
+    const shown = new DOMMatrixReadOnly(getComputedStyle(els[0]).transform).m42;
+    anims.forEach((a) => a.cancel());
+    els.forEach((el) => el.style.removeProperty("content-visibility"));
+    moving();
+    sc.scrollTop -= shown;
+  };
   const stop = () => {
     cancelAnimationFrame(raf);
     raf = 0;
     follow = null;
+    land();
   };
   /**
    * To a place, in about `ms`, leaving at speed v (px/ms) and coming to rest on it (a cubic: no
-   * overshoot). The place is read again each frame, and the way still to go kept in proportion.
+   * overshoot). The page is put there at once and the ayahs in view carried to it by the browser's
+   * own animation (a phone's script runs at 60 frames a second; its animations at the screen's own
+   * rate, 120 on an iPhone, as its scrolling does).
    */
   const glide = (to: () => number, v = 0, ms?: number) => {
     stop();
     rest(false);
-    const start = sc.scrollTop, d0 = to() - start;
     moving();
-    if (Math.abs(d0) < 0.5 || reduce()) {
-      sc.scrollTop = to();
+    const from = sc.scrollTop;
+    sc.scrollTop = to();
+    const off = sc.scrollTop - from; // (as far as the page could go)
+    if (Math.abs(off) < 0.5 || reduce()) return settle();
+    const dur = ms ?? Math.min(560, Math.max(260, 220 + Math.abs(off) * 0.22));
+    // its slope at the start, as fast as the finger was going (kept below an overshoot): the cubic
+    // m0·t + (3−2·m0)·t² + (m0−2)·t³, as a Bézier
+    const m0 = Math.max(0, Math.min(2.6, (v * dur) / off));
+    const easing = `cubic-bezier(0.333, ${(m0 / 3).toFixed(3)}, 0.667, 1)`;
+    // the ayahs seen on the way (drawn even if the browser would have skipped them as out of sight)
+    const lo = Math.min(from, sc.scrollTop), hi = Math.max(from, sc.scrollTop) + H();
+    const els = list().filter((el) => el.offsetTop < hi && el.offsetTop + el.offsetHeight > lo);
+    if (!els.length) return settle();
+    els.forEach((el) => (el.style.contentVisibility = "visible"));
+    const anims = els.map((el) => el.animate([{ transform: `translateY(${off}px)` }, { transform: "none" }], { duration: dur, easing }));
+    gliding = { anims, els };
+    anims[0].onfinish = () => {
+      if (gliding?.anims !== anims) return;
+      gliding = null;
+      anims.forEach((a) => a.cancel());
+      els.forEach((el) => el.style.removeProperty("content-visibility"));
       settle();
-      return;
-    }
-    const dur = ms ?? Math.min(560, Math.max(260, 220 + Math.abs(d0) * 0.22));
-    // its slope at the start, as fast as the finger was going (kept below an overshoot)
-    const m0 = Math.max(0, Math.min(2.6, (v * dur) / d0));
-    const t0 = performance.now();
-    // (where it set out from, kept as the same distance short of the place: an ayah above changing
-    // height moves both alike)
-    const short = d0;
-    const tick = () => {
-      moving();
-      const t = Math.min(1, (performance.now() - t0) / dur);
-      const s = m0 * t + (3 - 2 * m0) * t * t + (m0 - 2) * t * t * t;
-      sc.scrollTop = to() - short * (1 - s);
-      if (t < 1) raf = requestAnimationFrame(tick);
-      else {
-        raf = 0;
-        settle();
-      }
     };
-    raf = requestAnimationFrame(tick);
   };
   // a flick inside a long ayah: carried on by its speed, at rest by its top or its end at the latest
   const carry = (el: HTMLElement, v: number) => {
@@ -252,7 +265,7 @@ export function createPager(
     // within a long ayah: the page follows the wheel, smoothly, and stops at its top or end
     const want = Math.max(0, Math.min(r, rel + d));
     if (want === rel) return;
-    if (raf && !follow) stop(); // (a glide under way gives way to the wheel)
+    if (!follow) stop(); // (a glide under way gives way to the wheel, from where it is shown)
     follow = { el: T.el, rel: want };
     if (!raf) raf = requestAnimationFrame(chase);
   };
@@ -272,7 +285,8 @@ export function createPager(
     if (to) glide(to);
   };
 
-  settle();
+  // (once the page is drawn: asked now, while the surah is being put in, it would lay it all out again)
+  const first = requestAnimationFrame(settle);
   const opts = { passive: false } as const;
   if (touch) {
     sc.addEventListener("touchstart", onStart, { passive: true });
@@ -286,6 +300,7 @@ export function createPager(
     step,
     stop,
     destroy: () => {
+      cancelAnimationFrame(first);
       stop();
       rest(false);
       sc.removeEventListener("touchstart", onStart);

@@ -8,6 +8,7 @@ import { Copy, Download, ImageIcon, Link2, X as Close } from "lucide-react";
 import { EASE_OUT, cn, copyText } from "@/lib/utils";
 import { ayn, drawingHats, nameMarks } from "@/lib/names";
 import type { ThemeId } from "@/lib/themes";
+import { loadIndex } from "@/lib/data";
 
 export type ShareFormat = "square" | "landscape" | "story";
 const SIZES: Record<ShareFormat, [number, number]> = { square: [1080, 1080], landscape: [1600, 900], story: [1080, 1920] };
@@ -145,7 +146,7 @@ export function grain() {
    the way the theme sets the reader: its colours, lettering, rules and ground. */
 
 type Area = { top: number; bottom: number; padX: number };
-type Ctx = { W: number; H: number; S: number; m: number; fs: number; format: ShareFormat; art: HTMLCanvasElement | null; seed: number };
+type Ctx = { W: number; H: number; S: number; m: number; fs: number; format: ShareFormat; art: HTMLCanvasElement | null; seed: number; title?: string };
 type Look = {
   art?: "colour" | "grey"; // the surah card's art under it
   fonts: string[]; // loaded before drawing
@@ -725,6 +726,170 @@ const blue: Look = (() => {
   };
 })();
 
+/* Crimson: a leaf of parchment laid on a carpet's red field (its gold lattice, a rug's edge of two
+   gold rules and a row of beads): the surah's name in an illuminated band at the leaf's head, the
+   Arabic in ink, the English in italic beneath, the reference at its foot */
+const crimson: Look = (() => {
+  const INK = "#22160c";
+  // the lattice's tile: eight-pointed stars on a diamond grid, as the sky's (index.css)
+  const tile = (s: number) => {
+    const c = document.createElement("canvas");
+    c.width = c.height = s;
+    const g = c.getContext("2d")!;
+    g.strokeStyle = "#c9a35f";
+    g.lineWidth = s / 90;
+    const star = (x: number, y: number) => {
+      const r = s * 0.175;
+      g.strokeRect(x - r, y - r, 2 * r, 2 * r);
+      g.save();
+      g.translate(x, y);
+      g.rotate(Math.PI / 4);
+      g.strokeRect(-r, -r, 2 * r, 2 * r);
+      g.restore();
+    };
+    for (const [x, y] of [[s / 2, s / 2], [0, 0], [s, 0], [0, s], [s, s]]) star(x, y);
+    g.beginPath();
+    g.moveTo(0, s / 2);
+    g.lineTo(s / 2, 0);
+    g.lineTo(s, s / 2);
+    g.lineTo(s / 2, s);
+    g.closePath();
+    g.stroke();
+    return c;
+  };
+  // the leaf: inside the rug's edge
+  const leaf = (k: Ctx) => {
+    const p = k.m + k.S * 0.05;
+    return { x: p, y: p, w: k.W - 2 * p, h: k.H - 2 * p };
+  };
+  // the band at the leaf's head: two ruled rectangles, a knot at each end
+  const band = (g: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) => {
+    g.strokeStyle = "rgba(34,22,12,0.78)";
+    g.fillStyle = "rgba(34,22,12,0.7)";
+    g.lineWidth = 2;
+    g.strokeRect(x, y, w, h);
+    g.lineWidth = 1;
+    const i = h * 0.12;
+    g.strokeRect(x + i, y + i, w - 2 * i, h - 2 * i);
+    const r = h * 0.3;
+    for (const cx of [x + h * 0.62, x + w - h * 0.62]) {
+      const cy = y + h / 2;
+      g.beginPath();
+      g.arc(cx, cy, r, 0, Math.PI * 2);
+      g.stroke();
+      g.strokeRect(cx - r * 0.78, cy - r * 0.78, r * 1.56, r * 1.56);
+      g.save();
+      g.translate(cx, cy);
+      g.rotate(Math.PI / 4);
+      g.strokeRect(-r * 0.78, -r * 0.78, r * 1.56, r * 1.56);
+      g.restore();
+      g.beginPath();
+      g.arc(cx, cy, r * 0.22, 0, Math.PI * 2);
+      g.fill();
+      // a rule from the knot out to the band's end
+      const out = cx < x + w / 2 ? -1 : 1;
+      g.beginPath();
+      g.moveTo(cx + out * r, cy);
+      g.lineTo(cx + out * (h * 0.62 - i), cy);
+      g.stroke();
+    }
+  };
+  return {
+    fonts: ['italic 400 40px "Amiri"', '400 48px "KFGQPC HAFS"'],
+    ar: INK,
+    tr: "rgba(38,26,15,0.9)",
+    trFont: (px) => `italic 400 ${px}px "Amiri"`,
+    paint(g, k) {
+      const { W, H, S, m, fs } = k;
+      // the field and its lattice
+      const bg = g.createRadialGradient(W / 2, H * 0.4, 0, W / 2, H * 0.4, Math.max(W, H) * 0.75);
+      bg.addColorStop(0, "#74121a");
+      bg.addColorStop(0.5, "#520b11");
+      bg.addColorStop(1, "#2a0508");
+      g.fillStyle = bg;
+      g.fillRect(0, 0, W, H);
+      g.save();
+      g.globalAlpha = 0.14;
+      g.fillStyle = g.createPattern(tile(Math.round(S * 0.09)), "repeat")!;
+      g.fillRect(0, 0, W, H);
+      g.restore();
+      // a rug's edge: two gold rules, a row of beads between
+      const e = S * 0.014;
+      g.strokeStyle = "rgba(214,184,128,0.7)";
+      g.lineWidth = 2;
+      g.strokeRect(m, m, W - 2 * m, H - 2 * m);
+      g.strokeRect(m + 2 * e, m + 2 * e, W - 2 * (m + 2 * e), H - 2 * (m + 2 * e));
+      g.fillStyle = "rgba(214,184,128,0.65)";
+      const bead = (x: number, y: number) => {
+        g.beginPath();
+        g.arc(x, y, S * 0.0028, 0, Math.PI * 2);
+        g.fill();
+      };
+      const step = S * 0.022, o = m + e;
+      for (let x = o + step; x < W - o - step / 2; x += step) (bead(x, o), bead(x, H - o));
+      for (let y = o + step; y < H - o - step / 2; y += step) (bead(o, y), bead(W - o, y));
+      // the leaf of parchment: lighter at its heart, browned at its edges, a little uneven
+      const L = leaf(k);
+      g.save();
+      g.shadowColor = "rgba(12,0,2,0.55)";
+      g.shadowBlur = S * 0.04;
+      g.shadowOffsetY = S * 0.012;
+      g.fillStyle = "#c9b694";
+      g.fillRect(L.x, L.y, L.w, L.h);
+      g.restore();
+      const pg = g.createRadialGradient(L.x + L.w / 2, L.y + L.h * 0.45, 0, L.x + L.w / 2, L.y + L.h * 0.45, Math.max(L.w, L.h) * 0.72);
+      pg.addColorStop(0, "#d9c9a9");
+      pg.addColorStop(0.6, "#cdb895");
+      pg.addColorStop(1, "#b39c78");
+      g.fillStyle = pg;
+      g.fillRect(L.x, L.y, L.w, L.h);
+      const rnd = seeded(k.seed + 7);
+      g.save();
+      g.beginPath();
+      g.rect(L.x, L.y, L.w, L.h);
+      g.clip();
+      for (let i = 0; i < 9; i++) glowAt(g, k, L.x + rnd() * L.w, L.y + rnd() * L.h, S * (0.12 + rnd() * 0.2), `rgba(120,90,50,${(0.05 + rnd() * 0.06).toFixed(3)})`);
+      grainOn(g, k, 0.9);
+      g.restore();
+      // the band, and the surah's name in it
+      const bw = L.w * 0.86, bh = Math.max(S * 0.075, fs * 3.4), bx = L.x + (L.w - bw) / 2, by = L.y + S * 0.045;
+      band(g, bx, by, bw, bh);
+      if (k.title) {
+        g.fillStyle = "rgba(34,22,12,0.86)";
+        g.textAlign = "center";
+        g.textBaseline = "middle";
+        g.direction = "rtl";
+        g.font = `${Math.round(bh * 0.58)}px "KFGQPC HAFS"`;
+        g.fillText(`سُورَةُ ${k.title}`, bx + bw / 2, by + bh * 0.54);
+        g.direction = "ltr";
+      }
+      return { top: by + bh + S * 0.05, bottom: L.y + L.h - fs * 4.4, padX: L.x + L.w * 0.08 };
+    },
+    rule(g, x, y) {
+      // a small lozenge in ink between two short rules
+      g.strokeStyle = "rgba(34,22,12,0.5)";
+      g.fillStyle = "rgba(34,22,12,0.6)";
+      g.lineWidth = 1.5;
+      line(g, x - 34, y, x - 9, y);
+      line(g, x + 9, y, x + 34, y);
+      g.beginPath();
+      g.moveTo(x, y - 4.5);
+      g.lineTo(x + 4.5, y);
+      g.lineTo(x, y + 4.5);
+      g.lineTo(x - 4.5, y);
+      g.closePath();
+      g.fill();
+    },
+    reference(g, k, name, ref) {
+      const L = leaf(k);
+      g.textAlign = "center";
+      g.fillStyle = "rgba(38,26,15,0.68)";
+      g.font = `italic ${Math.round(k.fs * 1.25)}px "Amiri", serif`;
+      g.fillText(`(${name} · ${ref})`, k.W / 2, L.y + L.h - k.fs * 2.2);
+    },
+  };
+})();
+
 function lookOf(theme: ThemeId | undefined, box: "night" | "paper" | undefined, sky?: "dark" | "light"): Look {
   switch (theme) {
     case "mono":
@@ -739,6 +904,8 @@ function lookOf(theme: ThemeId | undefined, box: "night" | "paper" | undefined, 
       return lunar;
     case "blue":
       return blue;
+    case "crimson":
+      return crimson;
     default:
       return classic;
   }
@@ -760,7 +927,9 @@ export async function renderAyahImage(o: ShareContent, format: ShareFormat): Pro
   let art = look.art && o.surah ? await cardBackdrop(o.surah, W, H) : null;
   if (art && look.art === "grey") art = grey(art);
   const S = Math.min(W, H);
-  const k: Ctx = { W, H, S, m: Math.round(S * 0.045), fs: Math.round(S * 0.021), format, art, seed: o.surah ?? 0 };
+  // (the surah's Arabic name, for a look that writes it: Crimson's band)
+  const title = o.surah ? ((await loadIndex().catch(() => null)) as { surahs?: { ar: string }[] } | null)?.surahs?.[o.surah - 1]?.ar : undefined;
+  const k: Ctx = { W, H, S, m: Math.round(S * 0.045), fs: Math.round(S * 0.021), format, art, seed: o.surah ?? 0, title };
   const { top, bottom, padX } = look.paint(g, k);
   g.globalAlpha = 1;
   g.setLineDash([]);

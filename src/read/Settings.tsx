@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ImmersivePanel, MenuGlyph, Reveal } from "@/components/ImmersivePanel";
 import { HIGHLIGHT_COLORS, HIGHLIGHT_HEX, useStore, type HighlightColor, type Settings } from "@/lib/store";
@@ -12,7 +12,7 @@ import type { Surah, Translation, Verse } from "@/lib/data";
 import { TRANSLATIONS, loadSurah, translationText } from "@/lib/data";
 import { EASE_OUT, cn } from "@/lib/utils";
 import { Segmented } from "@/components/ui/segmented";
-import { ayn, nameMarks } from "@/lib/names";
+import { nameMarks } from "@/lib/names";
 
 type Tab = "reading" | "translation" | "display" | "sound" | "saved" | "progress" | "guide";
 const TABS: { id: Tab; name: string }[] = [
@@ -280,7 +280,6 @@ function DisplayTab({ s, set }: TabProps) {
                 </span>
               </span>
               <span className="text-[13px] leading-tight" style={t.face}>{t.name}</span>
-              <span className="label-sm -mt-1.5 text-[var(--box-faint)]">{t.line}</span>
             </button>
           ))}
         </div>
@@ -707,25 +706,3 @@ function Stepper({ value, onChange }: { value: number; onChange: (v: number) => 
   );
 }
 
-function Group({ title, count, empty, children }: { title: string; count: number; empty: string; children: ReactNode }) {
-  return (
-    <div>
-      <div className="mb-2 flex items-baseline justify-between">
-        <span className="text-[15px]">{title}</span>
-        <span className="label-sm text-[var(--box-faint)]">{count}</span>
-      </div>
-      {count === 0 ? <div className="text-[13px] text-[var(--box-faint)]">{empty}</div> : <div className="flex flex-col">{children}</div>}
-    </div>
-  );
-}
-
-function Item({ left, title, onClick, swatch, arabic, hand }: { left: string; title: string; onClick: () => void; swatch?: string; arabic?: boolean; hand?: boolean }) {
-  return (
-    <button type="button" onClick={onClick} className="group flex items-baseline gap-3 border-t border-[var(--box-line)] py-2 text-left transition-colors hover:bg-[var(--box-hover)]">
-      <span className="font-mono text-[11px] text-[var(--box-faint)] tabular-nums">{left}</span>
-      {swatch && <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: { yellow: "#f5e27a", green: "#a2dd8f", pink: "#f3a0c1", blue: "#96c5f4", orange: "#f6b06f" }[swatch] }} />}
-      <span className={cn("min-w-0 flex-1 truncate", arabic ? "quran text-right text-[18px]" : hand ? "font-hand text-[19px]" : "font-serif text-[15px]")}>{title}</span>
-      <span className="label-sm text-[var(--box-faint)] opacity-0 transition-opacity group-hover:opacity-100">Open →</span>
-    </button>
-  );
-}

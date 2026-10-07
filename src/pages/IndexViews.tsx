@@ -1,10 +1,10 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ChevronDown, Search } from "lucide-react";
-import { arabicText, loadSummaries, pad3, translationText, TRANSLATIONS, type Surah, type SummarySection, type Verse } from "@/lib/data";
+import { arabicText, loadSummaries, pad3, translationText, type Surah, type SummarySection, type Verse } from "@/lib/data";
 import { useStore } from "@/lib/store";
 import { EASE_OUT, cn } from "@/lib/utils";
-import { ayn, nameMarks } from "@/lib/names";
+import { nameMarks } from "@/lib/names";
 
 /**
  * The index, seen other ways than the ring of surahs: by juz, by where each surah was revealed,

@@ -1,3 +1,5 @@
+import { whenIdle } from "./utils";
+
 /**
  * The sound of a highlighter drawn across paper: a short band of noise, brighter as the felt tip
  * starts, with a slight rasp of the paper's grain, fading as it lifts. Made with the Web Audio API
@@ -10,9 +12,11 @@ let noise: AudioBuffer | null = null;
    - the audio engine starts only inside a finger's lift or a click (not as the finger lands);
    - leaving the app, locking the phone or a call "interrupts" it, a state of its own that never
      ends by itself, and an engine brought back from it can say it is running and play nothing.
-   So the engine is made new inside the next press after any of that (wakeSound, from a lift or a
-   click), a silent sample is played in that press to open the phone's sound, and it is closed
-   whenever the page is hidden. The sounds themselves only ever ask a running engine. */
+   So the engine is made ahead, while the page is idle (on arriving, and on coming back after it was
+   hidden): making one takes a moment, and made inside a press it held up whatever the press began
+   (the cover opening into the index). The press only wakes it (wakeSound, from a lift or a click),
+   with a silent sample played in it to open the phone's sound; and it is closed whenever the page
+   is hidden. The sounds themselves only ever ask a running engine. */
 const AC = () => window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
 let stale = false; // the page was hidden since the engine was made: a new one at the next press
 
@@ -41,9 +45,18 @@ function context() {
 }
 let rest = 0;
 
-if (typeof document !== "undefined")
+/** an engine ready for the next press (a new one if there is none, or it was let go or interrupted) */
+function ready() {
+  const state = ctx?.state as string | undefined;
+  if (ctx && !stale && state !== "closed" && state !== "interrupted") return;
+  if (readSettings()?.sound === false) return;
+  fresh();
+}
+
+if (typeof document !== "undefined") {
+  whenIdle(ready);
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState !== "hidden") return;
+    if (document.visibilityState !== "hidden") return void whenIdle(ready);
     // gone from the screen: the engine is let go (an iPhone would interrupt it anyway)
     window.clearTimeout(rest);
     ctx?.close().catch(() => {});
@@ -51,6 +64,7 @@ if (typeof document !== "undefined")
     stroke = null;
     stale = true;
   });
+}
 
 function noiseBuffer(c: AudioContext) {
   if (noise && noise.sampleRate === c.sampleRate) return noise;
@@ -356,8 +370,7 @@ export function sfx(kind: Sfx, at = 0.5) {
  */
 export function wakeSound() {
   if (!AC()) return;
-  const state = ctx?.state as string | undefined;
-  if (!ctx || stale || state === "closed" || state === "interrupted") fresh();
+  ready(); // (made ahead as a rule: here only if the press came first)
   const c = ctx;
   if (!c || c.state === "running") return;
   c.resume().catch(() => {});

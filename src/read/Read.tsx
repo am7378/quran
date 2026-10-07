@@ -56,7 +56,7 @@ import { isLongPressMenu } from "@/lib/touch";
 import { useTouchSelect } from "./touchSelect";
 import type { Rect } from "@/lib/layout";
 import type { Result } from "@/lib/search";
-import { EASE_IN_OUT, EASE_OUT, cn, copyText, uid } from "@/lib/utils";
+import { EASE_IN_OUT, EASE_OUT, cn, copyText, uid, whenIdle } from "@/lib/utils";
 import { CompleteMark } from "./Progress";
 import { FolderPop } from "./Folders";
 import { IndexView, INDEX_VIEWS, type IndexKind } from "@/pages/IndexViews";
@@ -96,6 +96,34 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [active, setActive] = useState(start.showOpener ? 0 : start.ayah);
   const [lastShown, setLastShown] = useState(active); // the last ayah showing in the frame
+
+  /* ── a surah is built around where the reader lands, two ayahs either side, and the rest a
+     little at a time while the page is idle: all of a long one at once (Al-Baqarah, some 37,000
+     elements) held up its opening. An ayah the reader comes near is always built. ── */
+  const [built, setBuilt] = useState<{ for: SurahData | null; lo: number; hi: number }>({ for: null, lo: 1, hi: 0 });
+  if (data && built.for !== data) setBuilt({ for: data, lo: active - 2, hi: active + 2 });
+  useEffect(() => {
+    const sc = scroller.current;
+    if (!data || !sc || built.for !== data || (built.lo <= 1 && built.hi >= data.v.length)) return;
+    // (never while the reader is moving the page: the next few once it is still again)
+    let moved = 0;
+    const onMove = () => (moved = performance.now());
+    sc.addEventListener("scroll", onMove, { passive: true });
+    sc.addEventListener("touchstart", onMove, { passive: true });
+    let cancel = () => {};
+    const more = () => {
+      if (performance.now() - moved < 350) return void (t = window.setTimeout(() => (cancel = whenIdle(more)), 350));
+      setBuilt((b) => (b.for === data ? { ...b, lo: b.lo - 6, hi: b.hi + 6 } : b));
+    };
+    // (the first, once the opening has settled)
+    let t = window.setTimeout(() => (cancel = whenIdle(more)), built.hi - built.lo <= 4 ? 900 : 0);
+    return () => {
+      window.clearTimeout(t);
+      cancel();
+      sc.removeEventListener("scroll", onMove);
+      sc.removeEventListener("touchstart", onMove);
+    };
+  }, [data, built]);
   const target = useRef<{ ayah: number; smooth: boolean } | null>({ ayah: start.showOpener ? 0 : start.ayah, smooth: false });
   const [zoom, setZoom] = useState<Rect | null>(start.from ?? null);
 
@@ -498,10 +526,9 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
         setTip(null);
       });
     };
-    // (heard as well when a long ayah scrolls within itself: its word's tip goes)
-    sc.addEventListener("scroll", onScroll, { passive: true, capture: true });
+    sc.addEventListener("scroll", onScroll, { passive: true });
     return () => {
-      sc.removeEventListener("scroll", onScroll, { capture: true });
+      sc.removeEventListener("scroll", onScroll);
       cancelAnimationFrame(raf);
     };
   }, [data]);
@@ -509,8 +536,8 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
   /* ── scrolling freely, an ayah above the frame that is not laid out (or is laid out as it
      comes near, or let go as it moves away) can change from the height it held to its own:
      the page moves by the difference before it is drawn, so what the reader sees stays still
-     (the browser's own anchoring is off here, and Safari has none). The one-ayah view needs
-     none of this: it snaps back to the ayah it rests on by itself. Ayahs laid out on both
+     (the browser's own anchoring is off here, and Safari has none). The one-ayah view keeps its
+     place its own way (below). Ayahs laid out on both
      sides of a change are left to their own code (the context switch keeps its place). ── */
   useLayoutEffect(() => {
     const sc = scroller.current;
@@ -545,8 +572,8 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
 
   /* ── one ayah at a time: the reader stays on the ayah they are reading, at the same place in it,
      whatever changes height (the context switched on or off, a long ayah above laid out, an ayah
-     refitting). The browser's snapping alone may land on the next ayah once heights change (a long
-     ayah grown shorter under the reader, on a phone especially). ── */
+     built). The page is moved by the reader's hand here (pager.ts), and the browser's own anchoring
+     is off: nothing else would keep it. ── */
   useLayoutEffect(() => {
     const sc = scroller.current;
     if (!sc || !data || settings.view !== 1) return;
@@ -587,8 +614,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
       // moved by nothing of the reader's: a small shift (the browser's own, as heights change above)
       // put back on their place, as the snapping used to; a jump (the browser's find, say) kept
       if (!held && performance.now() > theirs) {
-        const a = anchor;
-        const want = a && a.el.isConnected ? a.el.offsetTop + (a.within ? Math.min(Math.max(0, a.off), Math.max(0, a.el.offsetHeight - sc.clientHeight)) : a.off) : null;
+        const want = wanted();
         if (want != null && Math.abs(sc.scrollTop - want) < sc.clientHeight * 0.5) return place();
       }
       theirs = Math.max(theirs, performance.now() + 250); // (a glide carrying on)
@@ -604,18 +630,21 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
     window.addEventListener("touchcancel", lift, { passive: true });
     anchorNow.current = note;
     anchorFollow.current = (ms) => (theirs = Math.max(theirs, performance.now() + ms));
-    const place = () => {
+    // where the place noted puts the page now: reading down a long ayah that has grown shorter, kept
+    // within it; on the way from one ayah to the next (a swipe under way, the next one laying itself
+    // out), exactly where the finger has it, never pulled back to the top of the one being left
+    const wanted = () => {
       const a = anchor;
-      if (!a || !a.el.isConnected) return;
-      // reading down a long ayah that has grown shorter: kept within it. On the way from one ayah to
-      // the next (a swipe under way, the next one laying itself out), exactly where the finger has it:
-      // never pulled back to the top of the one being left
+      if (!a || !a.el.isConnected) return null;
       const room = Math.max(0, a.el.offsetHeight - sc.clientHeight);
-      const want = a.el.offsetTop + (a.within ? Math.min(Math.max(0, a.off), room) : a.off);
-      if (Math.abs(sc.scrollTop - want) < 1) return;
+      return a.el.offsetTop + (a.within ? Math.min(Math.max(0, a.off), room) : a.off);
+    };
+    const place = () => {
+      const want = wanted();
+      if (want == null || Math.abs(sc.scrollTop - want) < 1) return;
       placing = true;
       sc.scrollTop = want;
-      a.off = want - a.el.offsetTop;
+      anchor!.off = want - anchor!.el.offsetTop;
       requestAnimationFrame(() => (placing = false));
     };
     const ro = new ResizeObserver(place);
@@ -1824,6 +1853,7 @@ export function Read({ surahs, juz, start, onIndex, mobile, below }: Props) {
                 return (
                   <AyahSection
                     key={key}
+                    light={!near && (v.n < built.lo || v.n > built.hi)}
                     surah={surahN}
                     verse={v}
                     near={near}

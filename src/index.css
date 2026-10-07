@@ -1861,3 +1861,74 @@ html.ios-short.focus-on body {
   color: var(--box-faint);
   opacity: 1;
 }
+
+/* ══ Crimson ═════════════════════════════════════════════════════
+   A carpet's red: the field deep crimson with its gold lattice faint over
+   it (eight-pointed stars, as a rug's or a tile's), held still; on it the
+   frame as Classic's, squared and dark, here a maroon near black with a
+   gold hairline inside; parchment type, gold for what matters. Amiri's
+   Latin (made beside its Arabic) for the names, Crimson Pro to read. */
+:root[data-theme="crimson"] {
+  --font-serif: "Crimson Pro Variable", "Marks Serif", "Newsreader Variable", Georgia, serif;
+  --font-display: "Amiri", "Marks Serif", "Crimson Pro Variable", Georgia, serif;
+  --read-scale: 1.08;
+  --tr-main: 560;
+  --box-bg: rgba(24, 4, 6, 0.86);
+  --box-bg-solid: #1a0507;
+  --box-fg: #eddcbb;
+  --box-muted: rgba(237, 220, 187, 0.58);
+  --box-faint: rgba(237, 220, 187, 0.34);
+  --box-line: rgba(201, 163, 95, 0.2);
+  --box-hover: rgba(237, 220, 187, 0.07);
+  --box-frame: #100203;
+  --box-accent: #c9a35f;
+  --box-context: rgba(214, 170, 140, 0.82);
+  --panel-bg: #170406;
+  --tip-bg: #eddcbb;
+  --tip-fg: #1a0507;
+  --box-radius: 0px;
+  --box-border: 3px;
+  --box-shadow: 0 40px 120px -30px rgba(10, 0, 1, 0.7), 0 18px 40px -20px rgba(10, 0, 1, 0.55), inset 0 0 0 1px rgba(201, 163, 95, 0.18);
+  --sky: #4a0a0f;
+  --outside-fg: #eddcbb;
+  --outside-muted: rgba(237, 220, 187, 0.72);
+  --outside-faint: rgba(237, 220, 187, 0.5);
+  --outside-line: rgba(237, 220, 187, 0.26);
+  --outside-tab: rgba(237, 220, 187, 0.42);
+  --outside-bg: #1a0507;
+  --edge-shade: rgba(20, 2, 4, 0.5);
+}
+:root[data-theme="crimson"] .display {
+  font-weight: 400;
+}
+:root[data-theme="crimson"] ::selection {
+  background: rgba(201, 163, 95, 0.35);
+}
+.crimson-sky {
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='none' stroke='%23c9a35f' stroke-width='0.9'%3E%3Crect x='26' y='26' width='28' height='28'/%3E%3Crect x='26' y='26' width='28' height='28' transform='rotate(45 40 40)'/%3E%3Crect x='-14' y='-14' width='28' height='28'/%3E%3Crect x='-14' y='-14' width='28' height='28' transform='rotate(45 0 0)'/%3E%3Crect x='66' y='-14' width='28' height='28'/%3E%3Crect x='66' y='-14' width='28' height='28' transform='rotate(45 80 0)'/%3E%3Crect x='-14' y='66' width='28' height='28'/%3E%3Crect x='-14' y='66' width='28' height='28' transform='rotate(45 0 80)'/%3E%3Crect x='66' y='66' width='28' height='28'/%3E%3Crect x='66' y='66' width='28' height='28' transform='rotate(45 80 80)'/%3E%3Cpath d='M0 40 L40 0 L80 40 L40 80 Z'/%3E%3C/g%3E%3Cg fill='%23c9a35f'%3E%3Ccircle cx='40' cy='40' r='2.2'/%3E%3Ccircle cx='0' cy='40' r='1.4'/%3E%3Ccircle cx='80' cy='40' r='1.4'/%3E%3Ccircle cx='40' cy='0' r='1.4'/%3E%3Ccircle cx='40' cy='80' r='1.4'/%3E%3C/g%3E%3C/svg%3E") center / 88px 88px,
+    radial-gradient(120% 90% at 50% 38%, #74121a 0%, #520b11 50%, #2a0508 100%);
+}
+/* (the lattice faint: drawn over the field at a fifth of its strength) */
+.crimson-sky::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(120% 90% at 50% 38%, rgba(116, 18, 26, 0.87) 0%, rgba(82, 11, 17, 0.88) 50%, rgba(42, 5, 8, 0.9) 100%);
+}
+/* Crimson's notes on parchment, lighter at its heart and browned at its edges, ruled faintly in brown */
+:root[data-theme="crimson"] .note-paper {
+  background:
+    linear-gradient(to bottom, rgba(255, 248, 230, 0.3), rgba(255, 248, 230, 0) 28px),
+    repeating-linear-gradient(to bottom, transparent 0 27px, rgba(92, 62, 30, 0.2) 27px 28px),
+    radial-gradient(130% 110% at 50% 42%, #d9c9a9 0%, #cdb895 58%, #b39c78 100%);
+  background-position: 0 0, 0 12px, 0 0;
+}
+:root[data-theme="crimson"] .note-paper::after {
+  background: linear-gradient(135deg, rgba(0, 0, 0, 0) 45%, rgba(0, 0, 0, 0.16) 50%, #b9a37f 56%, #e2d5bb 100%);
+}
+/* (and its dialogs, sharing an ayah or a note, in the frame's maroon) */
+:root[data-theme="crimson"] .theme-dialog {
+  background-color: #170406;
+  border-color: #100203;
+}

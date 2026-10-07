@@ -1,6 +1,11 @@
 import { useEffect, useRef } from "react";
 import { SKY } from "@/lib/motion";
 
+/** Crimson: a carpet's red field and its faint gold lattice, held still (index.css .crimson-sky) */
+export function CrimsonSky({ className }: { className?: string }) {
+  return <div className={`crimson-sky ${className ?? ""}`} />;
+}
+
 /**
  * The themes' living skies, each one fragment shader on one WebGL canvas that fills its parent:
  * drawn at once on mount (never blank), then at thirty frames a second (they drift slowly), resting

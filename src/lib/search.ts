@@ -135,7 +135,7 @@ export function normLatin(s: string) {
     .replace(/\b(surah|surat|sura|chapter)\b/g, " ")
     .trim()
     .replace(/^(al|an|ar|as|at|ash|ad|adh|az|aal|ali|el|ul)\s+/, "")
-    .replace(/^(al|an|ar|as|at|ash|ad|az)(?=[a-z]{3,})/, (m, _p, off, str) =>
+    .replace(/^(al|an|ar|as|at|ash|ad|az)(?=[a-z]{3,})/, (m, _p, _off, str) =>
       // only strip a glued article when what's left still looks like a name
       str.length - m.length >= 3 ? "" : m,
     );
